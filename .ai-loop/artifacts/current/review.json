@@ -1,0 +1,36 @@
+{
+  "artifact_type": "review",
+  "artifact_version": 1,
+  "run_id": "unset",
+  "iteration": 0,
+  "phase": "reviewing",
+  "phase_attempt": 0,
+  "producer": "codex",
+  "created_at": "unset",
+  "input_fingerprint": {
+    "requirement_sha256": null,
+    "design_sha256": null,
+    "review_target_commit": null
+  },
+  "metadata": {
+    "artifact_type": "review",
+    "artifact_version": 1,
+    "run_id": "unset",
+    "iteration": 0,
+    "phase": "reviewing",
+    "phase_attempt": 0,
+    "producer": "codex",
+    "created_at": "unset"
+  },
+  "result": "blocked",
+  "blocking_reason": "Not reviewed yet.",
+  "approved_design_version": 0,
+  "issues": [],
+  "summary": {
+    "total_issues": 0,
+    "critical_count": 0,
+    "major_count": 0,
+    "minor_count": 0,
+    "design_change_required": false
+  }
+}

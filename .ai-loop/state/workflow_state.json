@@ -1,0 +1,52 @@
+{
+  "state_version": 1,
+  "run_id": "run-20260323-100852-da457062",
+  "status": "active",
+  "phase": "designing",
+  "phase_attempt": 1,
+  "iteration": 1,
+  "max_iterations": 6,
+  "requirement": {
+    "path": ".ai-loop/input/requirement.md",
+    "sha256": "8f3213525ddbef9007378778496958a1b1f7ad3e6f9ec8c28e65f4730eb9f519"
+  },
+  "design": {
+    "version": 0,
+    "sha256": null,
+    "status": "draft"
+  },
+  "current_inputs": {
+    "requirement_sha256": "8f3213525ddbef9007378778496958a1b1f7ad3e6f9ec8c28e65f4730eb9f519",
+    "design_sha256": null,
+    "review_target_commit": null,
+    "accepted_amendment_ids": [],
+    "open_amendment_ids": []
+  },
+  "last_completed_phase": null,
+  "last_completed_at": null,
+  "last_artifacts": {
+    "design_md": ".ai-loop/artifacts/current/design.md",
+    "design_amendments_md": ".ai-loop/artifacts/current/design_amendments.md",
+    "implementation_report_md": ".ai-loop/artifacts/current/implementation_report.md",
+    "review_md": ".ai-loop/artifacts/current/review.md",
+    "review_json": ".ai-loop/artifacts/current/review.json",
+    "summary_md": ".ai-loop/artifacts/current/summary.md"
+  },
+  "loop_guard": {
+    "repeated_fingerprint_counts": {},
+    "consecutive_no_diff": 0,
+    "consecutive_malformed_artifacts": 0
+  },
+  "human_gate": {
+    "required": false,
+    "reason": null,
+    "details": null
+  },
+  "git": {
+    "branch": null,
+    "head_commit": null,
+    "last_reviewed_commit": null,
+    "last_good_commit": null
+  },
+  "active_lock_owner": null
+}

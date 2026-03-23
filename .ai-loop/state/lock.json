@@ -1,0 +1,11 @@
+{
+  "lock_version": 1,
+  "run_id": null,
+  "owner": null,
+  "pid": null,
+  "hostname": null,
+  "phase": null,
+  "phase_attempt": null,
+  "acquired_at": null,
+  "expires_at": null
+}
