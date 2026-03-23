@@ -44,7 +44,7 @@ class TestRunAgent:
             "HIVEMIND_CODEX_COMMAND",
             "codex exec --cwd {cwd} --phase {phase} {prompt_path}",
         )
-        monkeypatch.setattr("orchestrator.agent_runner._command_exists", lambda executable: True)
+        monkeypatch.setattr("orchestrator.agent_runner._resolve_executable", lambda executable: "C:/tools/codex.exe")
 
         seen = {}
 
@@ -67,6 +67,7 @@ class TestRunAgent:
         assert result["ok"] is True
         assert result["agent"] == "codex"
         assert seen["input"] == "hello agent"
+        assert seen["command"][0] == "C:/tools/codex.exe"
         assert "--phase" in seen["command"]
         assert str(prompt_path) in seen["command"]
 
@@ -79,7 +80,7 @@ class TestRunAgent:
             "HIVEMIND_CODEX_COMMAND",
             '["codex", "exec", "--phase", "{phase}", "{prompt_path}"]',
         )
-        monkeypatch.setattr("orchestrator.agent_runner._command_exists", lambda executable: True)
+        monkeypatch.setattr("orchestrator.agent_runner._resolve_executable", lambda executable: "C:/tools/codex.exe")
 
         def fake_run(command, cwd, input, text, capture_output, check):
             class Result:
@@ -87,7 +88,7 @@ class TestRunAgent:
                 stdout = ""
                 stderr = ""
 
-            assert command[0] == "codex"
+            assert command[0] == "C:/tools/codex.exe"
             assert command[3] == "reviewing"
             assert command[4] == str(prompt_path)
             return Result()
@@ -103,7 +104,23 @@ class TestRunAgent:
         state = _make_state(phase="implementing")
 
         monkeypatch.delenv("HIVEMIND_CLAUDE_COMMAND", raising=False)
-        monkeypatch.setattr("orchestrator.agent_runner._command_exists", lambda executable: False)
+        monkeypatch.setattr("orchestrator.agent_runner._resolve_executable", lambda executable: None)
 
         with pytest.raises(RuntimeError, match="HIVEMIND_CLAUDE_COMMAND"):
             run_agent(state, "implementing", str(prompt_path))
+
+    def test_wraps_startup_failure_with_actionable_message(self, tmp_path: Path, monkeypatch):
+        prompt_path = tmp_path / "prompt.md"
+        prompt_path.write_text("design prompt", encoding="utf-8")
+        state = _make_state(phase="designing")
+
+        monkeypatch.delenv("HIVEMIND_CODEX_COMMAND", raising=False)
+        monkeypatch.setattr("orchestrator.agent_runner._resolve_executable", lambda executable: "C:/tools/codex.exe")
+
+        def fake_run(command, cwd, input, text, capture_output, check):
+            raise FileNotFoundError("[WinError 2] The system cannot find the file specified")
+
+        monkeypatch.setattr("orchestrator.agent_runner.subprocess.run", fake_run)
+
+        with pytest.raises(RuntimeError, match="HIVEMIND_CODEX_COMMAND"):
+            run_agent(state, "designing", str(prompt_path))

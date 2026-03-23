@@ -8,27 +8,40 @@ from orchestrator.models import Phase, WorkflowState
 
 
 _ROOT_DIR = Path(__file__).resolve().parent.parent
-_TEMPLATE_DIR = _ROOT_DIR / "template" / "prompts"
+_TEMPLATE_DIRS = (
+    _ROOT_DIR / "template" / "prompts",
+    _ROOT_DIR / "template_prompts",
+)
 _INPUT_DIR = _ROOT_DIR / ".ai-loop" / "input"
 
 _PHASE_TEMPLATE_MAP = {
     Phase.DESIGNING: (
-        _TEMPLATE_DIR / "codex_design_prompt.template.md",
+        "codex_design_prompt.template.md",
         _INPUT_DIR / "codex_design_prompt.md",
     ),
     Phase.IMPLEMENTING: (
-        _TEMPLATE_DIR / "claude_implement_prompt.template.md",
+        "claude_implement_prompt.template.md",
         _INPUT_DIR / "claude_implement_prompt.md",
     ),
     Phase.REVIEWING: (
-        _TEMPLATE_DIR / "codex_review_prompt.template.md",
+        "codex_review_prompt.template.md",
         _INPUT_DIR / "codex_review_prompt.md",
     ),
     Phase.FIXING: (
-        _TEMPLATE_DIR / "claude_fix_prompt.template.md",
+        "claude_fix_prompt.template.md",
         _INPUT_DIR / "claude_fix_prompt.md",
     ),
 }
+
+
+def _resolve_template_path(template_name: str) -> Path:
+    """Resolve a prompt template from supported embedded workspace locations."""
+    for template_dir in _TEMPLATE_DIRS:
+        candidate = template_dir / template_name
+        if candidate.exists():
+            return candidate
+    searched = ", ".join(str(template_dir / template_name) for template_dir in _TEMPLATE_DIRS)
+    raise FileNotFoundError(f"Prompt template not found. Searched: {searched}")
 
 
 def get_prompt_output_path(phase: str) -> Path:
@@ -45,7 +58,8 @@ def build_prompt(state: WorkflowState, phase: str) -> str:
     if phase_enum not in _PHASE_TEMPLATE_MAP:
         raise ValueError(f"No prompt template is defined for phase: {phase}")
 
-    template_path, _ = _PHASE_TEMPLATE_MAP[phase_enum]
+    template_name, _ = _PHASE_TEMPLATE_MAP[phase_enum]
+    template_path = _resolve_template_path(template_name)
     template = template_path.read_text(encoding="utf-8")
 
     replacements = {

@@ -79,6 +79,18 @@ class TestAcquireLock:
         lock = acquire_lock(state, path=lock_path)
         assert lock.run_id == state.run_id
 
+    def test_recovers_inactive_placeholder_lock(self, tmp_path: Path):
+        lock_path = tmp_path / "lock.json"
+        lock_path.write_text(json.dumps({"lock_version": 1, "run_id": None}))
+
+        state = _make_state()
+        lock = acquire_lock(state, path=lock_path)
+
+        assert lock.run_id == state.run_id
+        stored = read_lock(lock_path)
+        assert stored is not None
+        assert stored.run_id == state.run_id
+
 
 class TestReleaseLock:
     def test_removes_file(self, tmp_path: Path):

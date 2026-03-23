@@ -1,6 +1,6 @@
 """Minimal CLI entrypoint for the orchestrator.
 
-Supports: status, init, validate, check-transition, run.
+Supports: status, init, validate, check-transition, advance, accept, run.
 Run via: python -m orchestrator <command>
 """
 
@@ -137,18 +137,11 @@ def cmd_validate(args: argparse.Namespace) -> None:
 def cmd_check_transition(args: argparse.Namespace) -> None:
     """Dry-run: show what the next phase would be."""
     from orchestrator.state_manager import load_state
-    from orchestrator.transition_engine import check_loop_guards, resolve_next_phase
-    from orchestrator.artifact_validator import (
-        validate_design,
-        validate_implementation_report,
-        validate_review_pair,
-    )
-    from orchestrator.artifact_parser import parse_review_json
-    from orchestrator.models import Phase, ImplementationMode
+    from orchestrator.transition_engine import check_loop_guards
+    from orchestrator.models import Phase
 
     state_path = Path(args.state) if args.state else WORKFLOW_STATE_PATH
     state = load_state(state_path)
-    phase = Phase(state.phase)
     artifacts_dir = ARTIFACTS_CURRENT_DIR
 
     # Check loop guards first
@@ -158,6 +151,35 @@ def cmd_check_transition(args: argparse.Namespace) -> None:
         print(f"Would transition to: {loop_decision.next_phase.value}")
         return
 
+    phase, artifact_valid, decision = _evaluate_transition(state, artifacts_dir)
+
+    if decision is None:
+        print(f"No transition logic for phase: {state.phase}")
+        return
+
+    print(f"Current:    {state.phase} (iter {state.iteration}, attempt {state.phase_attempt})")
+    print(f"Artifacts:  {'valid' if artifact_valid else 'INVALID'}")
+    print(f"Next phase: {decision.next_phase.value}")
+    if decision.increment_iteration:
+        print(f"Iteration:  will increment to {state.iteration + 1}")
+    if decision.open_human_gate:
+        print(f"Human gate: {decision.human_gate_reason}")
+    if decision.notes:
+        print(f"Notes:      {decision.notes}")
+
+
+def _evaluate_transition(state, artifacts_dir):
+    """Shared helper: validate artifacts and compute transition decision."""
+    from orchestrator.artifact_validator import (
+        validate_design,
+        validate_implementation_report,
+        validate_review_pair,
+    )
+    from orchestrator.artifact_parser import parse_review_json
+    from orchestrator.transition_engine import resolve_next_phase
+    from orchestrator.models import Phase, ImplementationMode
+
+    phase = Phase(state.phase)
     review = None
     artifact_valid = False
     report_result = "success"
@@ -195,27 +217,223 @@ def cmd_check_transition(args: argparse.Namespace) -> None:
             report_result = _extract_report_result(artifacts_dir / IMPLEMENTATION_REPORT_MD)
 
     else:
-        print(f"No transition logic for phase: {state.phase}")
-        return
+        return phase, artifact_valid, None
 
     decision = resolve_next_phase(state, artifact_valid, review=review, report_result=report_result)
+    return phase, artifact_valid, decision
 
-    print(f"Current:    {state.phase} (iter {state.iteration}, attempt {state.phase_attempt})")
-    print(f"Artifacts:  {'valid' if artifact_valid else 'INVALID'}")
-    print(f"Next phase: {decision.next_phase.value}")
+
+def cmd_advance(args: argparse.Namespace) -> None:
+    """Validate artifacts, compute next phase, and apply the transition to workflow state.
+
+    If human_gates.json marks the transition as 'manual', the workflow pauses
+    in NEEDS_HUMAN phase so the operator can review and then run 'accept'.
+    """
+    from orchestrator.audit_logger import log_event, log_orchestrator
+    from orchestrator.human_gate_config import requires_human_approval
+    from orchestrator.state_manager import load_state, open_human_gate, save_state
+    from orchestrator.transition_engine import apply_transition, check_loop_guards
+    from orchestrator.models import Phase
+
+    state_path = Path(args.state) if args.state else WORKFLOW_STATE_PATH
+    state = load_state(state_path)
+    artifacts_dir = ARTIFACTS_CURRENT_DIR
+
+    phase = Phase(state.phase)
+    if phase == Phase.DONE:
+        print(f"Run already completed: {state.run_id}")
+        return
+    if phase == Phase.NEEDS_HUMAN:
+        print(f"Workflow is blocked: {state.human_gate.reason}")
+        print("Run 'py -m orchestrator accept' to approve, or fix the issue first.")
+        sys.exit(1)
+
+    # Check loop guards first
+    loop_decision = check_loop_guards(state)
+    if loop_decision:
+        new_state = apply_transition(state, loop_decision)
+        save_state(new_state, state_path)
+        log_event(
+            "transition", state.phase, state.run_id, state.iteration,
+            f"Loop guard triggered -> {loop_decision.next_phase.value}",
+            details={"reason": loop_decision.human_gate_reason},
+        )
+        print(f"LOOP GUARD: {loop_decision.human_gate_reason}")
+        print(f"Transitioned to: {loop_decision.next_phase.value}")
+        sys.exit(1)
+
+    phase, artifact_valid, decision = _evaluate_transition(state, artifacts_dir)
+
+    if decision is None:
+        print(f"No transition logic for phase: {state.phase}")
+        sys.exit(1)
+
+    if not artifact_valid:
+        print(f"Cannot advance: artifacts are INVALID for phase '{state.phase}'")
+        sys.exit(1)
+
+    # Check human gate policy for this transition
+    if requires_human_approval(state.phase, decision.next_phase.value):
+        # Pause for human review — store pending transition in details
+        pending = json.dumps({
+            "pending_from": state.phase,
+            "pending_to": decision.next_phase.value,
+            "increment_iteration": decision.increment_iteration,
+            "notes": decision.notes,
+        })
+        new_state = open_human_gate(
+            state,
+            reason=f"Awaiting approval: {state.phase} -> {decision.next_phase.value}",
+            details=pending,
+        )
+        save_state(new_state, state_path)
+
+        log_event(
+            "human_gate_pending", state.phase, state.run_id, state.iteration,
+            f"Human approval required: {state.phase} -> {decision.next_phase.value}",
+            details={"from": state.phase, "to": decision.next_phase.value, "policy": "manual"},
+        )
+        log_orchestrator(
+            "INFO", state.run_id, state.phase,
+            f"Human gate opened: {state.phase} -> {decision.next_phase.value} (manual policy)",
+        )
+
+        print(f"Artifacts:  valid")
+        print(f"Transition: {state.phase} -> {decision.next_phase.value}")
+        print(f"Status:     WAITING FOR HUMAN APPROVAL")
+        print(f"")
+        print(f"Review the artifacts, then run:")
+        print(f"  py -m orchestrator accept     # approve and continue")
+        print(f"  py -m orchestrator status      # check current state")
+        return
+
+    # Auto-approve: apply transition directly
+    new_state = apply_transition(state, decision)
+    save_state(new_state, state_path)
+
+    log_event(
+        "transition", state.phase, state.run_id, state.iteration,
+        f"Advanced: {state.phase} -> {decision.next_phase.value}",
+        details={
+            "from_phase": state.phase,
+            "to_phase": decision.next_phase.value,
+            "increment_iteration": decision.increment_iteration,
+            "notes": decision.notes,
+            "policy": "auto",
+        },
+    )
+    log_orchestrator(
+        "INFO", state.run_id, state.phase,
+        f"Transition applied (auto): {state.phase} -> {decision.next_phase.value}",
+    )
+
+    print(f"Previous:   {state.phase} (iter {state.iteration}, attempt {state.phase_attempt})")
+    print(f"Artifacts:  valid")
+    print(f"Transitioned to: {decision.next_phase.value} (auto-approved)")
     if decision.increment_iteration:
-        print(f"Iteration:  will increment to {state.iteration + 1}")
-    if decision.open_human_gate:
-        print(f"Human gate: {decision.human_gate_reason}")
+        print(f"Iteration:  incremented to {new_state.iteration}")
     if decision.notes:
         print(f"Notes:      {decision.notes}")
+
+
+def cmd_accept(args: argparse.Namespace) -> None:
+    """Accept a pending human gate and apply the stored transition."""
+    from orchestrator.audit_logger import log_event, log_orchestrator
+    from orchestrator.state_manager import (
+        close_human_gate,
+        increment_iteration,
+        load_state,
+        mark_completed,
+        record_phase_success,
+        save_state,
+        set_phase,
+    )
+    from orchestrator.models import Phase
+
+    state_path = Path(args.state) if args.state else WORKFLOW_STATE_PATH
+    state = load_state(state_path)
+
+    if not state.human_gate.required:
+        print("No human gate is active. Nothing to accept.")
+        return
+
+    # Recover pending transition from human gate details
+    pending = None
+    if state.human_gate.details:
+        try:
+            pending = json.loads(state.human_gate.details)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if not pending or "pending_to" not in pending:
+        # Human gate was opened by loop guard or error, not a transition gate.
+        # Just close the gate and restore the previous phase.
+        new_state = close_human_gate(state)
+        # Restore the phase from pending_from if available
+        if pending and pending.get("pending_from"):
+            new_state.phase = pending["pending_from"]
+        save_state(new_state, state_path)
+        log_orchestrator("INFO", state.run_id, state.phase, "Human gate closed (no pending transition)")
+        print(f"Human gate closed. Phase restored.")
+        print(f"Run 'py -m orchestrator status' to check state.")
+        return
+
+    from_phase = pending["pending_from"]
+    to_phase = pending["pending_to"]
+    do_increment = pending.get("increment_iteration", False)
+    notes = pending.get("notes", "")
+
+    # Apply the pending transition
+    new_state = close_human_gate(state)
+    new_state.phase = from_phase  # restore original phase first
+    current_phase = Phase(from_phase)
+    target_phase = Phase(to_phase)
+
+    # Record current phase as completed
+    new_state = record_phase_success(new_state, current_phase)
+
+    if do_increment:
+        new_state = increment_iteration(new_state)
+
+    if target_phase == Phase.DONE:
+        new_state = mark_completed(new_state)
+    else:
+        new_state = set_phase(new_state, target_phase)
+
+    save_state(new_state, state_path)
+
+    log_event(
+        "transition", from_phase, state.run_id, state.iteration,
+        f"Human accepted: {from_phase} -> {to_phase}",
+        details={
+            "from_phase": from_phase,
+            "to_phase": to_phase,
+            "increment_iteration": do_increment,
+            "notes": notes,
+        },
+    )
+    log_orchestrator(
+        "INFO", state.run_id, from_phase,
+        f"Human approved transition: {from_phase} -> {to_phase}",
+    )
+
+    print(f"Accepted:   {from_phase} -> {to_phase}")
+    if do_increment:
+        print(f"Iteration:  incremented to {new_state.iteration}")
+    if notes:
+        print(f"Notes:      {notes}")
+    print(f"")
+    print(f"Next: py -m orchestrator run")
 
 
 def cmd_run(args: argparse.Namespace) -> None:
     """Start the current phase by generating its prompt package and invoking the agent."""
     from orchestrator.audit_logger import (
+        log_agent_error,
+        log_agent_session,
         log_event,
         log_lock_event,
+        log_orchestrator,
         log_phase_start,
         log_validation_failure,
     )
@@ -242,10 +460,15 @@ def cmd_run(args: argparse.Namespace) -> None:
     try:
         lock = acquire_lock(state)
         log_lock_event(state.run_id, state.phase, state.iteration, "acquired")
+        log_orchestrator("INFO", state.run_id, state.phase, "Lock acquired")
 
         preconditions = check_preconditions(state, phase)
         if not preconditions.valid:
             log_validation_failure(state.run_id, state.phase, state.iteration, preconditions.errors)
+            log_orchestrator(
+                "ERROR", state.run_id, state.phase,
+                f"Precondition failed: {'; '.join(preconditions.errors)}",
+            )
             print(f"Cannot start phase: {state.phase}")
             for error in preconditions.errors:
                 print(f"  - {error}")
@@ -256,6 +479,11 @@ def cmd_run(args: argparse.Namespace) -> None:
         atomic_write(prompt_path, prompt)
 
         log_phase_start(state.run_id, state.phase, state.iteration, state.phase_attempt)
+        log_orchestrator(
+            "INFO", state.run_id, state.phase,
+            f"Phase started (attempt {state.phase_attempt}), invoking agent...",
+        )
+
         try:
             agent_result = run_agent(state, state.phase, str(prompt_path))
         except Exception as exc:
@@ -267,8 +495,24 @@ def cmd_run(args: argparse.Namespace) -> None:
                 f"Failed to invoke agent for phase {state.phase}",
                 details={"error": str(exc)},
             )
+            error_log = log_agent_error(
+                state.run_id, state.phase, state.phase_attempt,
+                exc, prompt_path=str(prompt_path),
+            )
+            log_orchestrator(
+                "ERROR", state.run_id, state.phase,
+                f"Agent invocation failed: {exc} (details: {error_log})",
+            )
             print(f"Failed to invoke agent: {exc}")
+            print(f"Error log:   {error_log}")
             sys.exit(1)
+
+        # Persist full agent output to a dedicated session log
+        session_log = log_agent_session(
+            state.run_id, state.phase, state.phase_attempt,
+            agent_result, str(prompt_path),
+        )
+
         log_event(
             "agent_invocation",
             state.phase,
@@ -279,7 +523,14 @@ def cmd_run(args: argparse.Namespace) -> None:
                 "agent": agent_result["agent"],
                 "command": agent_result["command"],
                 "returncode": agent_result["returncode"],
+                "session_log": str(session_log),
             },
+        )
+        log_orchestrator(
+            "INFO" if agent_result["ok"] else "ERROR",
+            state.run_id, state.phase,
+            f"Agent '{agent_result['agent']}' exited {agent_result['returncode']} "
+            f"(log: {session_log})",
         )
 
         print(f"Run ID:      {state.run_id}")
@@ -298,6 +549,7 @@ def cmd_run(args: argparse.Namespace) -> None:
         elif phase == Phase.REVIEWING:
             print(f"Expected:    {ARTIFACTS_CURRENT_DIR / REVIEW_MD}")
             print(f"Expected:    {ARTIFACTS_CURRENT_DIR / REVIEW_JSON}")
+        print(f"Session log: {session_log}")
         if agent_result["stderr"].strip():
             print(f"Agent stderr: {agent_result['stderr'].strip()}")
         if not agent_result["ok"]:
@@ -306,6 +558,7 @@ def cmd_run(args: argparse.Namespace) -> None:
         if lock is not None:
             release_lock()
             log_lock_event(state.run_id, state.phase, state.iteration, "released")
+            log_orchestrator("INFO", state.run_id, state.phase, "Lock released")
 
 
 def _extract_report_result(report_path: Path) -> str:
@@ -355,6 +608,12 @@ def main() -> None:
     # check-transition
     subparsers.add_parser("check-transition", help="Dry-run phase transition check")
 
+    # advance
+    subparsers.add_parser("advance", help="Validate artifacts and apply phase transition")
+
+    # accept
+    subparsers.add_parser("accept", help="Accept a pending human gate and apply the transition")
+
     # run
     subparsers.add_parser("run", help="Generate the prompt package for the current phase")
 
@@ -369,6 +628,8 @@ def main() -> None:
         "init": cmd_init,
         "validate": cmd_validate,
         "check-transition": cmd_check_transition,
+        "advance": cmd_advance,
+        "accept": cmd_accept,
         "run": cmd_run,
     }
 

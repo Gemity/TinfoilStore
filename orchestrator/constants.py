@@ -14,6 +14,9 @@ INPUT_DIR = AI_LOOP_DIR / "input"
 WORKFLOW_STATE_PATH = STATE_DIR / "workflow_state.json"
 LOCK_PATH = STATE_DIR / "lock.json"
 AUDIT_LOG_PATH = LOGS_DIR / "audit.log"
+AGENT_LOGS_DIR = LOGS_DIR / "agents"
+ORCHESTRATOR_LOG_PATH = LOGS_DIR / "orchestrator.log"
+HUMAN_GATES_CONFIG_PATH = AI_LOOP_DIR / "config" / "human_gates.json"
 
 # Artifact file names
 DESIGN_MD = "design.md"

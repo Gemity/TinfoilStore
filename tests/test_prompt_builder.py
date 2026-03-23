@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from orchestrator.prompt_builder import build_prompt, get_prompt_output_path
+import orchestrator.prompt_builder as prompt_builder
 from orchestrator.models import (
     CurrentInputs,
     DesignRef,
@@ -34,7 +34,7 @@ def _make_state(**overrides) -> WorkflowState:
 class TestBuildPrompt:
     def test_design_prompt_injects_runtime_values(self):
         state = _make_state(phase="designing")
-        prompt = build_prompt(state, "designing")
+        prompt = prompt_builder.build_prompt(state, "designing")
         assert "run-20260323-120000-abcdef12" in prompt
         assert "`2`" in prompt
         assert "`3`" in prompt
@@ -43,19 +43,33 @@ class TestBuildPrompt:
 
     def test_review_prompt_uses_commit_and_design_sha(self):
         state = _make_state(phase="reviewing")
-        prompt = build_prompt(state, "reviewing")
+        prompt = prompt_builder.build_prompt(state, "reviewing")
         assert "design-sha" in prompt
         assert "abc123def" in prompt
 
     def test_fix_prompt_output_path(self):
-        output = get_prompt_output_path("fixing")
+        output = prompt_builder.get_prompt_output_path("fixing")
         assert output == Path(".ai-loop/input/claude_fix_prompt.md").resolve()
 
     def test_unknown_phase_raises(self):
         state = _make_state()
         try:
-            build_prompt(state, "needs_human")
+            prompt_builder.build_prompt(state, "needs_human")
         except ValueError as exc:
             assert "No prompt template" in str(exc)
         else:
             raise AssertionError("Expected ValueError for unsupported phase")
+
+    def test_falls_back_to_template_prompts_directory(self, tmp_path: Path, monkeypatch):
+        fallback_dir = tmp_path / "template_prompts"
+        fallback_dir.mkdir()
+        template_path = fallback_dir / "codex_design_prompt.template.md"
+        template_path.write_text("run {{RUN_ID}} req {{REQUIREMENT_SHA256}}", encoding="utf-8")
+
+        monkeypatch.setattr(prompt_builder, "_TEMPLATE_DIRS", (tmp_path / "missing", fallback_dir))
+
+        state = _make_state(phase="designing")
+        prompt = prompt_builder.build_prompt(state, "designing")
+
+        assert "run run-20260323-120000-abcdef12" in prompt
+        assert "req req-sha" in prompt

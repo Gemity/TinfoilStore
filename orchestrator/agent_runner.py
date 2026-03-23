@@ -47,14 +47,22 @@ def run_agent(state: WorkflowState, phase: str, prompt_path: str) -> dict:
     prompt_text = prompt_file.read_text(encoding="utf-8")
     command = _resolve_command(agent, state, phase, prompt_file)
 
-    completed = subprocess.run(
-        command,
-        cwd=str(_ROOT_DIR),
-        input=prompt_text,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(_ROOT_DIR),
+            input=prompt_text,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"Failed to start agent '{agent}' with command {command!r}. "
+            f"If this CLI works in your shell but not from Python, set "
+            f"{_ENV_VAR_BY_AGENT[agent]} to the full executable path or command template. "
+            f"Original error: {exc}"
+        ) from exc
 
     return {
         "ok": completed.returncode == 0,
@@ -89,11 +97,13 @@ def _resolve_command(agent: str, state: WorkflowState, phase: str, prompt_path: 
     ]
 
     executable = rendered[0]
-    if not _command_exists(executable):
+    resolved_executable = _resolve_executable(executable)
+    if not resolved_executable:
         raise RuntimeError(
             f"Agent command not found for '{agent}': {executable}. "
             f"Set {_ENV_VAR_BY_AGENT[agent]} to the correct CLI invocation."
         )
+    rendered[0] = resolved_executable
 
     return rendered
 
@@ -113,8 +123,12 @@ def _parse_command(value: str) -> list[str]:
 
 
 def _command_exists(executable: str) -> bool:
+    return _resolve_executable(executable) is not None
+
+
+def _resolve_executable(executable: str) -> str | None:
     if os.path.isabs(executable):
-        return Path(executable).exists()
+        return executable if Path(executable).exists() else None
     if any(sep in executable for sep in ("/", "\\")):
-        return Path(executable).exists()
-    return shutil.which(executable) is not None
+        return executable if Path(executable).exists() else None
+    return shutil.which(executable)

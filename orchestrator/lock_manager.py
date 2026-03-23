@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 import socket
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -63,7 +63,16 @@ def acquire_lock(
     except FileExistsError:
         pass
 
-    # File exists — check if it is stale and can be recovered
+    # A placeholder/null lock file from a bootstrapped workspace is inactive.
+    # Remove it so the first real acquire can proceed.
+    if _recover_inactive_lock(path):
+        try:
+            _exclusive_create(path, data)
+            return lock
+        except FileExistsError:
+            pass
+
+    # File exists - check if it is stale and can be recovered.
     existing = read_lock(path)
     if existing and not is_lock_expired(existing):
         raise RuntimeError(
@@ -105,6 +114,17 @@ def release_lock(path: Path = LOCK_PATH) -> None:
         os.remove(path)
     except FileNotFoundError:
         pass
+
+
+def _recover_inactive_lock(path: Path) -> bool:
+    """Remove a lock file that exists on disk but does not represent an active lock."""
+    path = Path(path)
+    if not path.exists():
+        return False
+    if read_lock(path) is not None:
+        return False
+    release_lock(path)
+    return True
 
 
 def refresh_lock(
