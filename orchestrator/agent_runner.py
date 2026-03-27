@@ -28,7 +28,7 @@ _ENV_VAR_BY_AGENT = {
 
 _DEFAULT_COMMANDS = {
     "codex": ["codex", "exec", "-"],
-    "claude": ["claude", "-p"],
+    "claude": ["claude", "-p", "--dangerously-skip-permissions"],
 }
 
 
@@ -53,6 +53,8 @@ def run_agent(state: WorkflowState, phase: str, prompt_path: str) -> dict:
             cwd=str(_ROOT_DIR),
             input=prompt_text,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             check=False,
         )

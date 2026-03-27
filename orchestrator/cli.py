@@ -309,6 +309,11 @@ def cmd_advance(args: argparse.Namespace) -> None:
 
     # Auto-approve: apply transition directly
     new_state = apply_transition(state, decision)
+
+    # Update design reference when leaving designing phase
+    if state.phase == "designing" and decision.next_phase == Phase.IMPLEMENTING:
+        new_state = _update_design_in_state(new_state)
+
     save_state(new_state, state_path)
 
     log_event(
@@ -399,6 +404,10 @@ def cmd_accept(args: argparse.Namespace) -> None:
         new_state = mark_completed(new_state)
     else:
         new_state = set_phase(new_state, target_phase)
+
+    # Update design reference when leaving designing phase
+    if from_phase == "designing" and target_phase == Phase.IMPLEMENTING:
+        new_state = _update_design_in_state(new_state)
 
     save_state(new_state, state_path)
 
@@ -550,7 +559,7 @@ def cmd_run(args: argparse.Namespace) -> None:
             print(f"Expected:    {ARTIFACTS_CURRENT_DIR / REVIEW_MD}")
             print(f"Expected:    {ARTIFACTS_CURRENT_DIR / REVIEW_JSON}")
         print(f"Session log: {session_log}")
-        if agent_result["stderr"].strip():
+        if (agent_result["stderr"] or "").strip():
             print(f"Agent stderr: {agent_result['stderr'].strip()}")
         if not agent_result["ok"]:
             sys.exit(agent_result["returncode"] or 1)
@@ -559,6 +568,24 @@ def cmd_run(args: argparse.Namespace) -> None:
             release_lock()
             log_lock_event(state.run_id, state.phase, state.iteration, "released")
             log_orchestrator("INFO", state.run_id, state.phase, "Lock released")
+
+
+def _update_design_in_state(state):
+    """Read the current design artifact and update design ref in state."""
+    from orchestrator.artifact_parser import parse_markdown_frontmatter
+    from orchestrator.fileutil import compute_sha256
+    from orchestrator.state_manager import update_design_ref
+
+    design_path = ARTIFACTS_CURRENT_DIR / DESIGN_MD
+    if not design_path.exists():
+        return state
+
+    metadata, _ = parse_markdown_frontmatter(design_path)
+    sha256 = compute_sha256(design_path)
+    version = metadata.extra.get("design_version", 1)
+    status = metadata.extra.get("status", "approved")
+
+    return update_design_ref(state, version=version, sha256=sha256, status=status)
 
 
 def _extract_report_result(report_path: Path) -> str:
