@@ -1,0 +1,97 @@
+# TinfoilStore - Project Progress Tracker
+
+## Project Overview
+**Name:** TinfoilStore - Nintendo Switch Tinfoil Shop Backend
+**Started:** 2026-03-23
+**Last Updated:** 2026-03-26
+**Workflow Engine:** HiveMind AI Orchestrator (multi-agent: Codex + Claude)
+
+---
+
+## Phase Summary
+
+| # | Phase | Status | Owner | Notes |
+|---|-------|--------|-------|-------|
+| 1 | Requirements | DONE | Human | requirement.md finalized |
+| 2 | Orchestrator Runtime | DONE | Human + Claude | 17 modules, 12 test files, full CLI |
+| 3 | Design | DONE | Codex | design.md approved (v1) |
+| 4 | Implementation | PENDING | Claude | shop_backend/ package — next step |
+| 5 | Review | WAITING | Codex | After implementation |
+| 6 | Fix (if needed) | WAITING | Claude | After review |
+| 7 | Done | WAITING | — | After review passes |
+
+---
+
+## Current State
+- **Run ID:** run-20260323-032347-7909cac2
+- **Phase:** `implementing` (next to execute)
+- **Iteration:** 1, Attempt: 1
+- **Max Iterations:** 6
+- **Human Gates:** designing→implementing (approved), reviewing→designing, reviewing→done
+
+---
+
+## Completed Milestones
+
+### 1. Orchestrator Runtime (2026-03-23)
+Full Python orchestrator with:
+- State machine (designing → implementing → reviewing → fixing → done)
+- Artifact parser & validator (YAML frontmatter, markdown sections)
+- Transition engine with loop guards
+- Lock manager (atomic, stale recovery, TTL)
+- Audit logger (JSON-line, agent sessions)
+- CLI: status, init, validate, check-transition, advance, accept, run
+- Agent runner (subprocess for Codex/Claude)
+- Prompt builder (template resolution)
+- Human gate configuration
+- Git integration
+- 12 test modules with full coverage
+
+### 2. Design Artifact (2026-03-23)
+Approved design for `shop_backend/` package:
+- **Architecture:** API routes, DB models, services, schemas, security, storage
+- **Features:** User management, JWT auth, subscription lifecycle, Wasabi S3 integration
+- **Tech Stack:** (to be confirmed in implementation)
+- **Business Logic:** Active/expired/revoked subscriptions, manual extensions, access control
+
+---
+
+## Next Steps
+1. Run `py -m orchestrator run` to start implementation phase
+2. Claude implements `shop_backend/` per approved design
+3. Produce `implementation_report.md` artifact
+4. Codex reviews implementation
+5. Iterate fix/review until done
+
+---
+
+## Project Structure
+```
+TinfoilStore/
+├── orchestrator/          # HiveMind runtime (17 modules) ✅
+├── tests/                 # Test suite (12 modules) ✅
+├── .ai-loop/              # Workflow workspace
+│   ├── input/             # requirement.md ✅
+│   ├── artifacts/current/ # design.md ✅, implementation_report.md ⏳
+│   ├── state/             # workflow_state.json ✅
+│   ├── config/            # human_gates.json ✅
+│   └── logs/              # audit.log ✅
+├── skills/                # Claude skills
+├── template_prompts/      # 4 phase templates ✅
+├── shop_backend/          # ⏳ TO BE CREATED
+├── HiveMind-AI/           # Git submodule (template source)
+├── pyproject.toml         # Project config ✅
+└── orchestrator_runtime_spec.md  # Runtime contract ✅
+```
+
+---
+
+## Key Commands
+```bash
+py -m orchestrator status           # Check current state
+py -m orchestrator run              # Execute current phase
+py -m orchestrator advance          # Apply transition
+py -m orchestrator accept           # Approve human gate
+py -m orchestrator validate         # Validate artifacts
+py -m pytest -q                     # Run tests
+```
