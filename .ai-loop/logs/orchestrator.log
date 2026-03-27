@@ -42,3 +42,35 @@
 [2026-03-26T16:49:20.564328+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Phase started (attempt 1), invoking agent...
 [2026-03-26T16:53:06.264320+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Agent 'codex' exited 0 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_reviewing_attempt1.log)
 [2026-03-26T16:53:06.265191+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released
+[2026-03-27T05:00:09.540512+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock acquired
+[2026-03-27T05:00:09.555070+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Phase started (attempt 1), invoking agent...
+[2026-03-27T05:04:50.096773+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Agent 'codex' exited 0 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_reviewing_attempt1.log)
+[2026-03-27T05:04:50.101178+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released
+[2026-03-27T05:06:26.301722+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Transition applied (auto): reviewing -> needs_human
+[2026-03-27T05:26:27.550933+00:00] [INFO] [run-20260323-032347-7909cac2] [needs_human] Human gate closed, phase restored to reviewing
+[2026-03-27T05:26:37.056943+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock acquired
+[2026-03-27T05:26:37.057719+00:00] [ERROR] [run-20260323-032347-7909cac2] [reviewing] Precondition failed: Cannot review: last completed phase is 'reviewing'
+[2026-03-27T05:26:37.058738+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released
+[2026-03-27T05:27:07.163647+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock acquired
+[2026-03-27T05:27:07.168850+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Phase started (attempt 1), invoking agent...
+[2026-03-27T05:27:07.175668+00:00] [ERROR] [run-20260323-032347-7909cac2] [reviewing] Agent invocation failed: Agent command not found for 'codex': codex. Set HIVEMIND_CODEX_COMMAND to the correct CLI invocation. (details: .ai-loop\logs\agents\run-20260323-032347-7909cac2_reviewing_attempt1.log)
+[2026-03-27T05:27:07.176761+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released
+[2026-03-27T05:27:20.990075+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock acquired
+[2026-03-27T05:27:20.993817+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Phase started (attempt 1), invoking agent...
+[2026-03-27T05:32:29.314232+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released
+[2026-03-27T05:32:43.808499+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock acquired
+[2026-03-27T05:32:43.813109+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Phase started (attempt 1), invoking agent...
+[2026-03-27T05:36:51.557673+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Extracted and wrote review artifacts: .ai-loop\artifacts\current\review.md, .ai-loop\artifacts\current\review.json
+[2026-03-27T05:36:51.559441+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Agent 'codex' exited 0 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_reviewing_attempt1.log)
+[2026-03-27T05:36:51.560662+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released
+[2026-03-27T05:39:14.373036+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Transition applied (auto): reviewing -> fixing
+[2026-03-27T05:39:23.313378+00:00] [INFO] [run-20260323-032347-7909cac2] [fixing] Lock acquired
+[2026-03-27T05:39:23.323409+00:00] [INFO] [run-20260323-032347-7909cac2] [fixing] Phase started (attempt 1), invoking agent...
+[2026-03-27T05:42:00.590347+00:00] [INFO] [run-20260323-032347-7909cac2] [fixing] Agent 'claude' exited 0 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_fixing_attempt1.log)
+[2026-03-27T05:42:00.592634+00:00] [INFO] [run-20260323-032347-7909cac2] [fixing] Lock released
+[2026-03-27T05:42:21.673848+00:00] [INFO] [run-20260323-032347-7909cac2] [fixing] Transition applied (auto): fixing -> reviewing
+[2026-03-27T05:42:28.817480+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock acquired
+[2026-03-27T05:42:28.821773+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Phase started (attempt 1), invoking agent...
+[2026-03-27T05:45:06.129658+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Extracted and wrote review artifacts: .ai-loop\artifacts\current\review.md, .ai-loop\artifacts\current\review.json
+[2026-03-27T05:45:06.131726+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Agent 'codex' exited 0 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_reviewing_attempt1.log)
+[2026-03-27T05:45:06.134718+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released

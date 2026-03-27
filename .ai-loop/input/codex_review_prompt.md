@@ -7,7 +7,7 @@ You are Codex acting in the `reviewing` phase.
 ## Runtime Metadata
 
 - run_id: `run-20260323-032347-7909cac2`
-- iteration: `1`
+- iteration: `2`
 - phase: `reviewing`
 - phase_attempt: `1`
 - producer: `codex`
@@ -37,7 +37,7 @@ Must start with this exact YAML frontmatter format:
 artifact_type: review
 artifact_version: 1
 run_id: run-20260323-032347-7909cac2
-iteration: 1
+iteration: 2
 phase: reviewing
 phase_attempt: 1
 producer: codex
@@ -57,7 +57,7 @@ Must follow this JSON schema:
   "artifact_type": "review",
   "artifact_version": 1,
   "run_id": "run-20260323-032347-7909cac2",
-  "iteration": 1,
+  "iteration": 2,
   "phase": "reviewing",
   "phase_attempt": 1,
   "producer": "codex",
