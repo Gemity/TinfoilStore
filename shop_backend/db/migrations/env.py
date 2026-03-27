@@ -3,11 +3,16 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from shop_backend.config import settings
 from shop_backend.db.base import Base
 import shop_backend.db.models  # noqa: F401 — ensure models are registered
 
 config = context.config
 fileConfig(config.config_file_name)
+
+# Override alembic.ini with the application's environment-driven DATABASE_URL
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
 target_metadata = Base.metadata
 
 
