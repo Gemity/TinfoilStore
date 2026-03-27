@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "Bash(python -m pytest -q)",
+      "Bash(where claude:*)",
+      "Bash(where claude.exe)",
+      "Read(//d/AI Project/TinfoilStore/$APPDATA/npm/**)",
+      "Read(//d/AI Project/TinfoilStore/$LOCALAPPDATA/Programs/**)",
+      "Read(//c/Users/PC/.npm-global/**)",
+      "Bash(npm list:*)",
+      "Bash(command -v claude)",
+      "Bash(hash claude:*)",
+      "Bash(echo $PATH)",
+      "Bash(while read:*)",
+      "Bash(do ls:*)",
+      "Bash(done)",
+      "Bash(ls /c/Users/PC/AppData/Roaming/npm/claude*)",
+      "Bash(ls /c/Users/PC/AppData/Local/Python/bin/claude*)",
+      "Bash(ls /c/Users/PC/bin/claude*)",
+      "Bash(powershell.exe -Command \"Get-Command claude -ErrorAction SilentlyContinue | Select-Object Source\")",
+      "Bash(powershell.exe -Command \"Get-Command claude.exe -ErrorAction SilentlyContinue | Select-Object Source\")",
+      "Bash(python -m orchestrator validate)",
+      "Bash(python -m orchestrator check-transition)",
+      "Bash(xxd \"D:\\\\AI Project\\\\TinfoilStore\\\\.ai-loop\\\\input\\\\codex_review_prompt.md\")"
+    ]
+  }
+}
