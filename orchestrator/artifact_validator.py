@@ -116,9 +116,23 @@ def validate_input_fingerprint(
 
 # --- Section validation ---
 
+_SECTION_ALIASES: Dict[str, List[str]] = {
+    "Minor Issues": ["Non-Critical Issues"],
+}
+
+
 def check_required_sections(sections: Dict[str, str], required: List[str]) -> ValidationResult:
-    """Check that all required section headings exist."""
-    missing = [s for s in required if s not in sections]
+    """Check that all required section headings exist.
+
+    Supports aliases for sections that LLM agents may name differently.
+    """
+    missing = []
+    for req in required:
+        if req in sections:
+            continue
+        aliases = _SECTION_ALIASES.get(req, [])
+        if not any(alias in sections for alias in aliases):
+            missing.append(req)
     if missing:
         return ValidationResult(
             valid=False,

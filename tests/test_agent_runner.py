@@ -48,7 +48,7 @@ class TestRunAgent:
 
         seen = {}
 
-        def fake_run(command, cwd, input, text, capture_output, check):
+        def fake_run(command, cwd, input, text, capture_output, check, **kwargs):
             seen["command"] = command
             seen["cwd"] = cwd
             seen["input"] = input
@@ -82,7 +82,7 @@ class TestRunAgent:
         )
         monkeypatch.setattr("orchestrator.agent_runner._resolve_executable", lambda executable: "C:/tools/codex.exe")
 
-        def fake_run(command, cwd, input, text, capture_output, check):
+        def fake_run(command, cwd, input, text, capture_output, check, **kwargs):
             class Result:
                 returncode = 0
                 stdout = ""
@@ -117,7 +117,7 @@ class TestRunAgent:
         monkeypatch.delenv("HIVEMIND_CODEX_COMMAND", raising=False)
         monkeypatch.setattr("orchestrator.agent_runner._resolve_executable", lambda executable: "C:/tools/codex.exe")
 
-        def fake_run(command, cwd, input, text, capture_output, check):
+        def fake_run(command, cwd, input, text, capture_output, check, **kwargs):
             raise FileNotFoundError("[WinError 2] The system cannot find the file specified")
 
         monkeypatch.setattr("orchestrator.agent_runner.subprocess.run", fake_run)

@@ -372,15 +372,20 @@ def cmd_accept(args: argparse.Namespace) -> None:
 
     if not pending or "pending_to" not in pending:
         # Human gate was opened by loop guard or error, not a transition gate.
-        # Just close the gate and restore the previous phase.
+        # Close the gate and restore the previous phase.
         new_state = close_human_gate(state)
-        # Restore the phase from pending_from if available
+        # Restore phase: from pending_from, or fall back to last_completed_phase
+        restore_phase = None
         if pending and pending.get("pending_from"):
-            new_state.phase = pending["pending_from"]
+            restore_phase = pending["pending_from"]
+        elif state.last_completed_phase:
+            restore_phase = state.last_completed_phase
+        if restore_phase:
+            new_state.phase = restore_phase
         save_state(new_state, state_path)
-        log_orchestrator("INFO", state.run_id, state.phase, "Human gate closed (no pending transition)")
-        print(f"Human gate closed. Phase restored.")
-        print(f"Run 'py -m orchestrator status' to check state.")
+        log_orchestrator("INFO", state.run_id, state.phase, f"Human gate closed, phase restored to {new_state.phase}")
+        print(f"Human gate closed. Phase restored to: {new_state.phase}")
+        print(f"Run 'py -m orchestrator run' to retry.")
         return
 
     from_phase = pending["pending_from"]
@@ -516,6 +521,11 @@ def cmd_run(args: argparse.Namespace) -> None:
             print(f"Error log:   {error_log}")
             sys.exit(1)
 
+        # For reviewing phase: extract artifacts from Codex stdout
+        # (Codex runs read-only and cannot write files directly)
+        if phase == Phase.REVIEWING and agent_result["ok"]:
+            _extract_and_write_review(agent_result["stdout"], state, ARTIFACTS_CURRENT_DIR)
+
         # Persist full agent output to a dedicated session log
         session_log = log_agent_session(
             state.run_id, state.phase, state.phase_attempt,
@@ -560,7 +570,11 @@ def cmd_run(args: argparse.Namespace) -> None:
             print(f"Expected:    {ARTIFACTS_CURRENT_DIR / REVIEW_JSON}")
         print(f"Session log: {session_log}")
         if (agent_result["stderr"] or "").strip():
-            print(f"Agent stderr: {agent_result['stderr'].strip()}")
+            stderr_text = agent_result["stderr"].strip()
+            try:
+                print(f"Agent stderr: {stderr_text}")
+            except UnicodeEncodeError:
+                print(f"Agent stderr: {stderr_text.encode('ascii', 'replace').decode('ascii')}")
         if not agent_result["ok"]:
             sys.exit(agent_result["returncode"] or 1)
     finally:
@@ -568,6 +582,43 @@ def cmd_run(args: argparse.Namespace) -> None:
             release_lock()
             log_lock_event(state.run_id, state.phase, state.iteration, "released")
             log_orchestrator("INFO", state.run_id, state.phase, "Lock released")
+
+
+def _extract_and_write_review(stdout: str, state, artifacts_dir) -> None:
+    """Extract review artifacts from Codex stdout and write them to disk.
+
+    Codex runs in read-only sandbox, so it outputs the review content
+    in fenced code blocks. This function parses that output and writes
+    the review.md and review.json artifact files.
+    """
+    from orchestrator.review_extractor import (
+        extract_review_artifacts,
+        normalize_review_json,
+        write_review_artifacts,
+    )
+    from orchestrator.audit_logger import log_orchestrator
+
+    review_md, review_json = extract_review_artifacts(stdout)
+
+    if review_md is None or review_json is None:
+        log_orchestrator(
+            "WARN", state.run_id, state.phase,
+            f"Could not extract review artifacts from Codex stdout "
+            f"(md={'found' if review_md else 'missing'}, "
+            f"json={'found' if review_json else 'missing'})",
+        )
+        print("WARNING: Could not extract review artifacts from Codex output.")
+        print("         Review files were not updated.")
+        return
+
+    review_json = normalize_review_json(review_json)
+    md_path, json_path = write_review_artifacts(review_md, review_json, artifacts_dir)
+
+    log_orchestrator(
+        "INFO", state.run_id, state.phase,
+        f"Extracted and wrote review artifacts: {md_path}, {json_path}",
+    )
+    print(f"Extracted:   review.md and review.json from Codex output")
 
 
 def _update_design_in_state(state):
