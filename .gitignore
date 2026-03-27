@@ -5,3 +5,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.claude/
+.venv/
+venv/
+*.db
+*.sqlite3
+.env
+.env.local
