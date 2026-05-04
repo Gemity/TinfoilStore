@@ -22,7 +22,22 @@
       "Bash(powershell.exe -Command \"Get-Command claude.exe -ErrorAction SilentlyContinue | Select-Object Source\")",
       "Bash(python -m orchestrator validate)",
       "Bash(python -m orchestrator check-transition)",
-      "Bash(xxd \"D:\\\\AI Project\\\\TinfoilStore\\\\.ai-loop\\\\input\\\\codex_review_prompt.md\")"
+      "Bash(xxd \"D:\\\\AI Project\\\\TinfoilStore\\\\.ai-loop\\\\input\\\\codex_review_prompt.md\")",
+      "Bash(py -m orchestrator status)",
+      "Bash(py -m orchestrator validate)",
+      "Bash(codex --help)",
+      "Bash(\"C:\\\\nvm4w\\\\nodejs\\\\codex.CMD\" --help)",
+      "Bash(py -m pytest tests/test_review_extractor.py -v)",
+      "Bash(py -m orchestrator accept)",
+      "Bash(py -m orchestrator run)",
+      "Bash(HIVEMIND_CODEX_COMMAND='C:\\\\nvm4w\\\\nodejs\\\\codex.CMD exec -' py -m orchestrator run)",
+      "Bash(py -m pytest tests/ -v --ignore=tests/backend)",
+      "Bash(py -m orchestrator check-transition)",
+      "Bash(py -m pytest tests/test_prompt_builder.py tests/test_review_extractor.py -v)",
+      "Bash(py -m pytest tests/ -q)",
+      "Bash(py -c \"from orchestrator.models import Phase; print\\([p.value for p in Phase]\\)\")",
+      "Bash(py -c \"from orchestrator.prompt_builder import build_prompt; print\\(''prompt_builder OK''\\)\")",
+      "Bash(py -c \"from orchestrator.artifact_validator import validate_summary; print\\(''validator OK''\\)\")"
     ]
   }
 }

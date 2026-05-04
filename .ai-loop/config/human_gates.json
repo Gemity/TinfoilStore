@@ -5,7 +5,9 @@
     "implementing -> reviewing": "auto",
     "reviewing -> fixing": "auto",
     "reviewing -> designing": "manual",
+    "reviewing -> summarizing": "auto",
     "reviewing -> done": "manual",
-    "fixing -> reviewing": "auto"
+    "fixing -> reviewing": "auto",
+    "summarizing -> done": "auto"
   }
 }

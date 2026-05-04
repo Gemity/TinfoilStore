@@ -74,3 +74,12 @@
 [2026-03-27T05:45:06.129658+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Extracted and wrote review artifacts: .ai-loop\artifacts\current\review.md, .ai-loop\artifacts\current\review.json
 [2026-03-27T05:45:06.131726+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Agent 'codex' exited 0 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_reviewing_attempt1.log)
 [2026-03-27T05:45:06.134718+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Lock released
+[2026-03-27T07:48:42.113880+00:00] [INFO] [run-20260323-032347-7909cac2] [reviewing] Transition applied (auto): reviewing -> summarizing
+[2026-03-27T07:48:52.966270+00:00] [INFO] [run-20260323-032347-7909cac2] [summarizing] Lock acquired
+[2026-03-27T07:48:53.045786+00:00] [INFO] [run-20260323-032347-7909cac2] [summarizing] Phase started (attempt 1), invoking agent...
+[2026-03-27T07:50:26.222654+00:00] [INFO] [run-20260323-032347-7909cac2] [summarizing] Agent 'claude' exited 0 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_summarizing_attempt1.log)
+[2026-03-27T07:50:26.224681+00:00] [INFO] [run-20260323-032347-7909cac2] [summarizing] Lock released
+[2026-03-27T07:56:50.586537+00:00] [INFO] [run-20260323-032347-7909cac2] [summarizing] Lock acquired
+[2026-03-27T07:56:50.592120+00:00] [INFO] [run-20260323-032347-7909cac2] [summarizing] Phase started (attempt 1), invoking agent...
+[2026-03-27T07:59:56.623088+00:00] [ERROR] [run-20260323-032347-7909cac2] [summarizing] Agent 'claude' exited 1 (log: .ai-loop\logs\agents\run-20260323-032347-7909cac2_summarizing_attempt1.log)
+[2026-03-27T07:59:56.625365+00:00] [INFO] [run-20260323-032347-7909cac2] [summarizing] Lock released

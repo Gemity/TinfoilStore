@@ -18,6 +18,7 @@ from orchestrator.constants import (
     INPUT_DIR,
     REVIEW_JSON,
     REVIEW_MD,
+    SUMMARY_MD,
     WORKFLOW_STATE_PATH,
 )
 from orchestrator.fileutil import atomic_write
@@ -90,6 +91,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
         validate_design,
         validate_implementation_report,
         validate_review_pair,
+        validate_summary,
     )
     from orchestrator.models import Phase, ImplementationMode
 
@@ -126,6 +128,11 @@ def cmd_validate(args: argparse.Namespace) -> None:
             artifacts_dir / IMPLEMENTATION_REPORT_MD, state, expected_mode=mode,
         )
         _print_validation("implementation_report.md (fix)", result)
+        all_valid = all_valid and result.valid
+
+    elif phase == Phase.SUMMARIZING:
+        result = validate_summary(artifacts_dir / SUMMARY_MD, state)
+        _print_validation("summary.md", result)
         all_valid = all_valid and result.valid
 
     else:
@@ -174,6 +181,7 @@ def _evaluate_transition(state, artifacts_dir):
         validate_design,
         validate_implementation_report,
         validate_review_pair,
+        validate_summary,
     )
     from orchestrator.artifact_parser import parse_review_json
     from orchestrator.transition_engine import resolve_next_phase
@@ -215,6 +223,10 @@ def _evaluate_transition(state, artifacts_dir):
         artifact_valid = result.valid
         if artifact_valid:
             report_result = _extract_report_result(artifacts_dir / IMPLEMENTATION_REPORT_MD)
+
+    elif phase == Phase.SUMMARIZING:
+        result = validate_summary(artifacts_dir / SUMMARY_MD, state)
+        artifact_valid = result.valid
 
     else:
         return phase, artifact_valid, None
@@ -526,6 +538,10 @@ def cmd_run(args: argparse.Namespace) -> None:
         if phase == Phase.REVIEWING and agent_result["ok"]:
             _extract_and_write_review(agent_result["stdout"], state, ARTIFACTS_CURRENT_DIR)
 
+        # For summarizing phase: run post-agent finalization steps
+        if phase == Phase.SUMMARIZING and agent_result["ok"]:
+            _run_post_summary(state, log_orchestrator)
+
         # Persist full agent output to a dedicated session log
         session_log = log_agent_session(
             state.run_id, state.phase, state.phase_attempt,
@@ -568,6 +584,8 @@ def cmd_run(args: argparse.Namespace) -> None:
         elif phase == Phase.REVIEWING:
             print(f"Expected:    {ARTIFACTS_CURRENT_DIR / REVIEW_MD}")
             print(f"Expected:    {ARTIFACTS_CURRENT_DIR / REVIEW_JSON}")
+        elif phase == Phase.SUMMARIZING:
+            print(f"Expected:    {ARTIFACTS_CURRENT_DIR / SUMMARY_MD}")
         print(f"Session log: {session_log}")
         if (agent_result["stderr"] or "").strip():
             stderr_text = agent_result["stderr"].strip()
@@ -582,6 +600,33 @@ def cmd_run(args: argparse.Namespace) -> None:
             release_lock()
             log_lock_event(state.run_id, state.phase, state.iteration, "released")
             log_orchestrator("INFO", state.run_id, state.phase, "Lock released")
+
+
+def _run_post_summary(state, log_orchestrator) -> None:
+    """Run post-agent finalization after summarizing phase completes."""
+    from orchestrator.run_finalizer import run_post_summary_steps
+
+    try:
+        results = run_post_summary_steps(state)
+
+        if results["archived"]:
+            log_orchestrator("INFO", state.run_id, state.phase,
+                             f"Artifacts archived to {results['archived']}")
+            print(f"Archived:    {results['archived']}")
+
+        if results["git_tag"]:
+            log_orchestrator("INFO", state.run_id, state.phase,
+                             f"Git tag created: {results['git_tag']}")
+            print(f"Git tag:     {results['git_tag']}")
+
+        log_orchestrator("INFO", state.run_id, state.phase,
+                         f"Metrics written to {results['metrics']}")
+        print(f"Metrics:     {results['metrics']}")
+
+    except Exception as exc:
+        log_orchestrator("WARN", state.run_id, state.phase,
+                         f"Post-summary finalization error: {exc}")
+        print(f"WARNING: Post-summary steps failed: {exc}")
 
 
 def _extract_and_write_review(stdout: str, state, artifacts_dir) -> None:

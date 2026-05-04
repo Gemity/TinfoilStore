@@ -39,6 +39,10 @@ _PHASE_TEMPLATE_MAP = {
         "claude_fix_prompt.template.md",
         _INPUT_DIR / "claude_fix_prompt.md",
     ),
+    Phase.SUMMARIZING: (
+        "claude_summary_prompt.template.md",
+        _INPUT_DIR / "claude_summary_prompt.md",
+    ),
 }
 
 # Files to inline per phase. Paths are relative to _ROOT_DIR.
@@ -65,6 +69,13 @@ _PHASE_INLINE_FILES: dict[Phase, List[Tuple[str, str]]] = {
         ("review.md", ".ai-loop/artifacts/current/review.md"),
         ("review.json", ".ai-loop/artifacts/current/review.json"),
         ("implementation_report.md", ".ai-loop/artifacts/current/implementation_report.md"),
+    ],
+    Phase.SUMMARIZING: [
+        ("requirement.md", ".ai-loop/input/requirement.md"),
+        ("design.md", ".ai-loop/artifacts/current/design.md"),
+        ("implementation_report.md", ".ai-loop/artifacts/current/implementation_report.md"),
+        ("review.json", ".ai-loop/artifacts/current/review.json"),
+        ("tech_debt.md", ".ai-loop/artifacts/current/tech_debt.md"),
     ],
 }
 

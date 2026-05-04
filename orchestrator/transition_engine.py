@@ -64,6 +64,10 @@ def check_preconditions(state: WorkflowState, phase: Phase) -> ValidationResult:
         if state.last_completed_phase != Phase.REVIEWING.value:
             errors.append("Cannot fix: last completed phase is not 'reviewing'")
 
+    elif phase == Phase.SUMMARIZING:
+        if state.last_completed_phase != Phase.REVIEWING.value:
+            errors.append("Cannot summarize: last completed phase is not 'reviewing'")
+
     elif phase == Phase.NEEDS_HUMAN:
         # Always allowed
         pass
@@ -141,8 +145,8 @@ def resolve_reviewing_exit(state: WorkflowState, review: ReviewArtifact) -> Tran
                 notes="Review passed but open amendments pending, redesign needed",
             )
         return TransitionDecision(
-            next_phase=Phase.DONE,
-            notes="Review passed, run complete",
+            next_phase=Phase.SUMMARIZING,
+            notes="Review passed, moving to summary generation",
         )
 
     elif result == ReviewResult.FAIL.value:
@@ -179,6 +183,23 @@ def resolve_reviewing_exit(state: WorkflowState, review: ReviewArtifact) -> Tran
             open_human_gate=True,
             human_gate_reason=f"Unknown review result: {result}",
             notes=f"Unexpected review result '{result}'",
+        )
+
+
+def resolve_summarizing_exit(state: WorkflowState, artifact_valid: bool) -> TransitionDecision:
+    """Determine next phase after summarizing.
+
+    Spec: summarizing -> done (if summary artifact valid).
+    """
+    if artifact_valid:
+        return TransitionDecision(
+            next_phase=Phase.DONE,
+            notes="Summary generated, run complete",
+        )
+    else:
+        return TransitionDecision(
+            next_phase=Phase.SUMMARIZING,
+            notes="Summary artifact invalid, retry",
         )
 
 
@@ -286,6 +307,9 @@ def resolve_next_phase(
 
     elif phase == Phase.FIXING:
         return resolve_fixing_exit(state, artifact_valid)
+
+    elif phase == Phase.SUMMARIZING:
+        return resolve_summarizing_exit(state, artifact_valid)
 
     elif phase == Phase.NEEDS_HUMAN:
         # Human must resolve this - no automatic transition

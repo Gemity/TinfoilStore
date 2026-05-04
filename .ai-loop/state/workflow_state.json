@@ -2,7 +2,7 @@
   "state_version": 1,
   "run_id": "run-20260323-032347-7909cac2",
   "status": "active",
-  "phase": "reviewing",
+  "phase": "summarizing",
   "phase_attempt": 1,
   "iteration": 2,
   "max_iterations": 6,
@@ -22,8 +22,8 @@
     "accepted_amendment_ids": [],
     "open_amendment_ids": []
   },
-  "last_completed_phase": "fixing",
-  "last_completed_at": "2026-03-27T05:42:21.670810+00:00",
+  "last_completed_phase": "reviewing",
+  "last_completed_at": "2026-03-27T07:48:42.105835+00:00",
   "last_artifacts": {},
   "loop_guard": {
     "repeated_fingerprint_counts": {},

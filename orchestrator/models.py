@@ -19,6 +19,7 @@ class Phase(str, Enum):
     IMPLEMENTING = "implementing"
     REVIEWING = "reviewing"
     FIXING = "fixing"
+    SUMMARIZING = "summarizing"
     NEEDS_HUMAN = "needs_human"
     DONE = "done"
 

@@ -42,6 +42,11 @@ REVIEW_MD_REQUIRED_SECTIONS = [
     "Amendment Decisions", "Notes For Next Iteration",
 ]
 
+SUMMARY_REQUIRED_SECTIONS = [
+    "Overview", "What Was Built", "Architecture Decisions",
+    "Files Changed", "Known Limitations", "Future Work",
+]
+
 
 # --- Metadata validation ---
 
@@ -298,5 +303,31 @@ def validate_review_pair(
 
         except Exception as e:
             result = result.merge(ValidationResult(valid=False, errors=[f"Failed to parse review.json: {e}"]))
+
+    return result
+
+
+def validate_summary(path: Path, state: WorkflowState) -> ValidationResult:
+    """Full validation of summary.md: exists, parses, metadata matches, required sections."""
+    path = Path(path)
+    result = ValidationResult(valid=True)
+
+    if not path.exists():
+        return ValidationResult(valid=False, errors=[f"Summary artifact not found: {path}"])
+
+    try:
+        metadata, body = parse_markdown_frontmatter(path)
+    except Exception as e:
+        return ValidationResult(valid=False, errors=[f"Failed to parse summary: {e}"])
+
+    # Metadata validation
+    meta_result = validate_artifact_metadata(
+        metadata, state, ArtifactType.SUMMARY, Producer.CLAUDE,
+    )
+    result = result.merge(meta_result)
+
+    # Required sections
+    sections = extract_markdown_sections(body)
+    result = result.merge(check_required_sections(sections, SUMMARY_REQUIRED_SECTIONS))
 
     return result

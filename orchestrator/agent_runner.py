@@ -19,6 +19,7 @@ _PHASE_TO_AGENT = {
     Phase.REVIEWING: "codex",
     Phase.IMPLEMENTING: "claude",
     Phase.FIXING: "claude",
+    Phase.SUMMARIZING: "claude",
 }
 
 _ENV_VAR_BY_AGENT = {
