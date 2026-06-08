@@ -1,7 +1,7 @@
 [project]
-name = "hivemind-orchestrator"
+name = "tinfoilstore-backend"
 version = "0.1.0"
-description = "HiveMind AI Orchestrator Runtime"
+description = "TinfoilStore backend"
 requires-python = ">=3.10"
 
 dependencies = [
@@ -28,12 +28,11 @@ dev = [
 ]
 
 [project.scripts]
-orchestrator = "orchestrator.cli:main"
 shop-backend = "shop_backend.app:run"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["shop_backend*", "orchestrator*"]
+include = ["shop_backend*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
