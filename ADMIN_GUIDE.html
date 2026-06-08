@@ -1,0 +1,305 @@
+﻿<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ADMIN_GUIDE</title>
+<style>
+body { font-family: "Segoe UI", Arial, sans-serif; margin: 32px; color: #111; }
+pre { white-space: pre-wrap; word-wrap: break-word; font-family: "Segoe UI", Arial, sans-serif; font-size: 14px; line-height: 1.55; }
+@page { size: A4; margin: 18mm; }
+</style>
+</head>
+<body>
+<pre># H&#198;&#176;&#225;&#187;›ng D&#225;&#186;&#171;n Qu&#225;&#186;&#163;n Tr&#225;&#187;‹ TinfoilStore
+
+Trang qu&#225;&#186;&#163;n tr&#225;&#187;‹: **http://180.93.35.196/docs**
+
+T&#195;&#160;i li&#225;&#187;‡u n&#195;&#160;y d&#195;&#160;nh cho ng&#198;&#176;&#225;&#187;i v&#225;&#186;&#173;n h&#195;&#160;nh shop h&#225;&#186;&#177;ng ng&#195;&#160;y. M&#225;&#187;i thao t&#195;&#161;c &#196;‘&#225;&#187;u l&#195;&#160;m tr&#195;&#170;n `/docs`, kh&#195;&#180;ng c&#225;&#186;&#167;n ch&#225;&#186;&#161;y l&#225;&#187;‡nh bash &#225;&#187;Ÿ m&#195;&#161;y local.
+
+## 1. &#196;&#196;ƒng nh&#225;&#186;&#173;p
+
+1. M&#225;&#187;Ÿ tr&#195;&#172;nh duy&#225;&#187;‡t v&#195;&#160; v&#195;&#160;o `http://180.93.35.196/docs`
+2. Nh&#225;&#186;&#165;n n&#195;&#186;t **Authorize** &#225;&#187;Ÿ g&#195;&#179;c tr&#195;&#170;n b&#195;&#170;n ph&#225;&#186;&#163;i
+3. T&#195;&#172;m m&#225;&#187;&#165;c **HTTPBasic (HTTP, Basic)**
+4. Nh&#225;&#186;&#173;p:
+
+```text
+Username: admin
+Password: admin123
+```
+
+5. Nh&#225;&#186;&#165;n **Authorize**
+6. Nh&#225;&#186;&#165;n **Close**
+
+Sau &#196;‘&#195;&#179; b&#225;&#186;&#161;n c&#195;&#179; th&#225;&#187;ƒ d&#195;&#185;ng to&#195;&#160;n b&#225;&#187;™ ch&#225;&#187;&#169;c n&#196;ƒng qu&#225;&#186;&#163;n tr&#225;&#187;‹ b&#195;&#170;n d&#198;&#176;&#225;&#187;›i.
+
+## 2. T&#225;&#186;&#161;o User M&#225;&#187;›i
+
+M&#225;&#187;—i ng&#198;&#176;&#225;&#187;i d&#195;&#185;ng Tinfoil c&#225;&#186;&#167;n m&#225;&#187;™t t&#195;&#160;i kho&#225;&#186;&#163;n ri&#195;&#170;ng.
+
+1. T&#195;&#172;m endpoint **POST /admin/users**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. Nh&#225;&#186;&#173;p m&#225;&#186;&#171;u sau:
+
+```json
+{
+  &quot;username&quot;: &quot;nguyen01&quot;,
+  &quot;email&quot;: &quot;nguyen01@gmail.com&quot;,
+  &quot;password&quot;: &quot;matkhau123&quot;,
+  &quot;role&quot;: &quot;user&quot;
+}
+```
+
+4. Nh&#225;&#186;&#165;n **Execute**
+5. N&#225;&#186;&#191;u th&#225;&#186;&#165;y **Code 201** l&#195;&#160; th&#195;&#160;nh c&#195;&#180;ng
+6. Ghi l&#225;&#186;&#161;i `id` c&#225;&#187;&#167;a user &#196;‘&#225;&#187;ƒ c&#225;&#186;&#165;p subscription
+
+L&#198;&#176;u &#195;&#189;:
+
+- `username` kh&#195;&#180;ng &#196;‘&#198;&#176;&#225;&#187;&#163;c tr&#195;&#185;ng
+- `email` ph&#225;&#186;&#163;i &#196;‘&#195;&#186;ng &#196;‘&#225;&#187;‹nh d&#225;&#186;&#161;ng v&#195;&#160; kh&#195;&#180;ng tr&#195;&#185;ng
+- `password` t&#225;&#187;‘i thi&#225;&#187;ƒu 6 k&#195;&#189; t&#225;&#187;&#177;
+- `role` lu&#195;&#180;n &#196;‘&#225;&#187;ƒ `&quot;user&quot;`
+
+## 3. Xem Danh S&#195;&#161;ch User
+
+1. T&#195;&#172;m endpoint **GET /admin/users**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. Nh&#225;&#186;&#165;n **Execute**
+
+B&#225;&#186;&#161;n s&#225;&#186;&#189; th&#225;&#186;&#165;y:
+
+- `id`
+- `username`
+- `is_active`
+- `created_at`
+
+## 4. C&#225;&#186;&#165;p Subscription
+
+Sau khi t&#225;&#186;&#161;o user, c&#225;&#186;&#167;n c&#225;&#186;&#165;p subscription &#196;‘&#225;&#187;ƒ h&#225;&#187; t&#225;&#186;&#163;i game &#196;‘&#198;&#176;&#225;&#187;&#163;c.
+
+1. T&#195;&#172;m endpoint **POST /admin/subscriptions/{user_id}/grant**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. D&#195;&#161;n `id` c&#225;&#187;&#167;a user v&#195;&#160;o &#195;&#180; `user_id`
+4. Nh&#225;&#186;&#173;p m&#225;&#187;™t trong c&#195;&#161;c m&#225;&#186;&#171;u sau
+
+C&#225;&#186;&#165;p 30 ng&#195;&#160;y:
+
+```json
+{
+  &quot;days&quot;: 30,
+  &quot;hours&quot;: 0,
+  &quot;minutes&quot;: 0
+}
+```
+
+C&#225;&#186;&#165;p 1 n&#196;ƒm:
+
+```json
+{
+  &quot;days&quot;: 365,
+  &quot;hours&quot;: 0,
+  &quot;minutes&quot;: 0
+}
+```
+
+C&#225;&#186;&#165;p 5 ph&#195;&#186;t &#196;‘&#225;&#187;ƒ test:
+
+```json
+{
+  &quot;days&quot;: 0,
+  &quot;hours&quot;: 0,
+  &quot;minutes&quot;: 5
+}
+```
+
+5. Nh&#225;&#186;&#165;n **Execute**
+6. N&#225;&#186;&#191;u th&#225;&#186;&#165;y `effective_status = active` l&#195;&#160; xong
+
+## 5. Gia H&#225;&#186;&#161;n Subscription
+
+1. T&#195;&#172;m endpoint **POST /admin/subscriptions/{user_id}/extend**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. D&#195;&#161;n `id` c&#225;&#187;&#167;a user v&#195;&#160;o &#195;&#180; `user_id`
+4. Nh&#225;&#186;&#173;p v&#195;&#173; d&#225;&#187;&#165;:
+
+```json
+{
+  &quot;days&quot;: 30,
+  &quot;hours&quot;: 0,
+  &quot;minutes&quot;: 0,
+  &quot;notes&quot;: &quot;Gia han thang 4&quot;
+}
+```
+
+5. Nh&#225;&#186;&#165;n **Execute**
+6. Xem `ends_at` &#196;‘&#225;&#187;ƒ bi&#225;&#186;&#191;t h&#225;&#186;&#161;n m&#225;&#187;›i
+
+## 6. Thu H&#225;&#187;“i Subscription
+
+1. T&#195;&#172;m endpoint **POST /admin/subscriptions/{user_id}/revoke**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. D&#195;&#161;n `id` c&#225;&#187;&#167;a user v&#195;&#160;o &#195;&#180; `user_id`
+4. Nh&#225;&#186;&#173;p v&#195;&#173; d&#225;&#187;&#165;:
+
+```json
+{
+  &quot;reason&quot;: &quot;Vi pham quy dinh&quot;
+}
+```
+
+5. Nh&#225;&#186;&#165;n **Execute**
+6. N&#225;&#186;&#191;u th&#225;&#186;&#165;y `effective_status = revoked` l&#195;&#160; &#196;‘&#195;&#163; thu h&#225;&#187;“i
+
+## 7. Xem Danh S&#195;&#161;ch Game
+
+1. T&#195;&#172;m endpoint **GET /admin/content**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. Nh&#225;&#186;&#165;n **Execute**
+
+B&#225;&#186;&#161;n s&#225;&#186;&#189; th&#225;&#186;&#165;y to&#195;&#160;n b&#225;&#187;™ game &#196;‘ang c&#195;&#179; trong shop.
+
+## 8. C&#225;&#186;&#173;p Nh&#225;&#186;&#173;t Game M&#225;&#187;›i T&#225;&#187;&#171; Wasabi
+
+&#196;&#195;&#162;y l&#195;&#160; c&#195;&#161;ch chu&#225;&#186;&#169;n &#196;‘&#225;&#187;ƒ th&#195;&#170;m game m&#225;&#187;›i v&#195;&#160;o shop.
+
+Khi &#196;‘&#195;&#163; upload game l&#195;&#170;n Wasabi, ch&#225;&#187;‰ c&#225;&#186;&#167;n ch&#225;&#186;&#161;y:
+
+1. T&#195;&#172;m endpoint **POST /admin/sync**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. N&#225;&#186;&#191;u mu&#225;&#187;‘n scan to&#195;&#160;n b&#225;&#187;™ bucket th&#195;&#172; &#196;‘&#225;&#187;ƒ m&#225;&#186;&#183;c &#196;‘&#225;&#187;‹nh
+4. N&#225;&#186;&#191;u mu&#225;&#187;‘n scan m&#225;&#187;™t th&#198;&#176; m&#225;&#187;&#165;c ri&#195;&#170;ng, nh&#225;&#186;&#173;p `prefix`
+5. N&#225;&#186;&#191;u mu&#225;&#187;‘n x&#195;&#179;a game &#196;‘&#195;&#163; b&#225;&#187;‹ x&#195;&#179;a kh&#225;&#187;i Wasabi, &#196;‘&#225;&#186;&#183;t `cleanup = true`
+6. Nh&#225;&#186;&#165;n **Execute**
+
+V&#195;&#173; d&#225;&#187;&#165;:
+
+Scan to&#195;&#160;n b&#225;&#187;™ bucket:
+
+```text
+POST /admin/sync
+```
+
+Scan th&#198;&#176; m&#225;&#187;&#165;c `games/`:
+
+```text
+POST /admin/sync?prefix=games/
+```
+
+Scan v&#195;&#160; x&#195;&#179;a game stale:
+
+```text
+POST /admin/sync?cleanup=true
+```
+
+Sau khi ch&#225;&#186;&#161;y xong, h&#225;&#187;‡ th&#225;&#187;‘ng s&#225;&#186;&#189; t&#225;&#187;&#177;:
+
+- qu&#195;&#169;t Wasabi bucket hi&#225;&#187;‡n t&#225;&#186;&#161;i
+- th&#195;&#170;m game m&#225;&#187;›i v&#195;&#160;o database
+- x&#195;&#179;a game stale n&#225;&#186;&#191;u b&#225;&#186;&#173;t `cleanup`
+- t&#225;&#187;&#177; warm local icon cache
+
+Response m&#225;&#186;&#171;u:
+
+```json
+{
+  &quot;message&quot;: &quot;Sync completed and local icon cache warmed.&quot;,
+  &quot;sync&quot;: {
+    &quot;added&quot;: [],
+    &quot;removed&quot;: [],
+    &quot;total&quot;: 1,
+    &quot;scanned&quot;: 1
+  },
+  &quot;asset_cache&quot;: {
+    &quot;titles&quot;: 1,
+    &quot;iconUrl&quot;: 1,
+    &quot;bannerUrl&quot;: 1
+  }
+}
+```
+
+&#195; ngh&#196;&#169;a:
+
+- `sync.added`: game m&#225;&#187;›i th&#195;&#170;m v&#195;&#160;o DB
+- `sync.removed`: game b&#225;&#187;‹ x&#195;&#179;a kh&#225;&#187;i DB khi d&#195;&#185;ng cleanup
+- `sync.total`: t&#225;&#187;•ng s&#225;&#187;‘ game hi&#225;&#187;‡n c&#195;&#179;
+- `sync.scanned`: s&#225;&#187;‘ file qu&#195;&#169;t &#196;‘&#198;&#176;&#225;&#187;&#163;c tr&#195;&#170;n Wasabi
+- `asset_cache`: s&#225;&#187;‘ icon/banner &#196;‘&#195;&#163; &#196;‘&#198;&#176;&#225;&#187;&#163;c l&#195;&#160;m n&#195;&#179;ng cache local
+
+## 9. Th&#195;&#170;m Game Th&#225;&#187;&#167; C&#195;&#180;ng
+
+Ch&#225;&#187;‰ d&#195;&#185;ng khi th&#225;&#186;&#173;t s&#225;&#187;&#177; c&#225;&#186;&#167;n.
+
+1. T&#195;&#172;m endpoint **POST /admin/content**
+2. Nh&#225;&#186;&#165;n **Try it out**
+3. Nh&#225;&#186;&#173;p v&#195;&#173; d&#225;&#187;&#165;:
+
+```json
+{
+  &quot;title&quot;: &quot;Ten Game [0100XXXXXXXXXXXX][v0].nsp&quot;,
+  &quot;storage_key&quot;: &quot;Ten Game [0100XXXXXXXXXXXX][v0].nsp&quot;,
+  &quot;size_bytes&quot;: 1000000000,
+  &quot;is_protected&quot;: true
+}
+```
+
+Gi&#225;&#186;&#163;i th&#195;&#173;ch:
+
+- `title`: t&#195;&#170;n file game
+- `storage_key`: &#196;‘&#198;&#176;&#225;&#187;ng d&#225;&#186;&#171;n file tr&#195;&#170;n Wasabi
+- `size_bytes`: dung l&#198;&#176;&#225;&#187;&#163;ng file
+- `is_protected`: &#196;‘&#225;&#187;ƒ `true`
+
+## 10. G&#225;&#187;&#173;i Th&#195;&#180;ng Tin Shop Cho User
+
+Sau khi t&#225;&#186;&#161;o user v&#195;&#160; c&#225;&#186;&#165;p subscription, g&#225;&#187;&#173;i cho user:
+
+```text
+Protocol:  http
+Host:      180.93.35.196
+Port:      80
+Path:      /shop/
+Username:  (username da tao)
+Password:  (password da tao)
+Title:     TinfoilStore
+```
+
+L&#198;&#176;u &#195;&#189;:
+
+- `Title` ch&#225;&#187;‰ l&#195;&#160; t&#195;&#170;n hi&#225;&#187;ƒn th&#225;&#187;‹
+- kh&#195;&#180;ng nh&#225;&#186;&#173;p URL v&#195;&#160;o `Title`
+- kh&#195;&#180;ng nh&#225;&#186;&#173;p `admin:password@host` v&#195;&#160;o `Title`
+
+## 11. Quy Tr&#195;&#172;nh Nhanh
+
+```text
+B&#198;&#176;&#225;&#187;›c 1: POST /admin/users
+B&#198;&#176;&#225;&#187;›c 2: Copy id c&#225;&#187;&#167;a user
+B&#198;&#176;&#225;&#187;›c 3: POST /admin/subscriptions/{user_id}/grant
+B&#198;&#176;&#225;&#187;›c 4: Upload game l&#195;&#170;n Wasabi
+B&#198;&#176;&#225;&#187;›c 5: POST /admin/sync
+B&#198;&#176;&#225;&#187;›c 6: G&#225;&#187;&#173;i c&#225;&#186;&#165;u h&#195;&#172;nh shop cho user
+```
+
+## 12. M&#195;&#163; L&#225;&#187;—i Th&#198;&#176;&#225;&#187;ng G&#225;&#186;&#183;p
+
+| Code | Ngh&#196;&#169;a | C&#195;&#161;ch x&#225;&#187;&#173; l&#195;&#189; |
+|------|------|------------|
+| 200 | Th&#195;&#160;nh c&#195;&#180;ng | OK |
+| 201 | T&#225;&#186;&#161;o th&#195;&#160;nh c&#195;&#180;ng | OK |
+| 401 | Ch&#198;&#176;a &#196;‘&#196;ƒng nh&#225;&#186;&#173;p | Authorize l&#225;&#186;&#161;i |
+| 403 | Kh&#195;&#180;ng c&#195;&#179; quy&#225;&#187;n | Ch&#225;&#187;‰ admin m&#225;&#187;›i d&#195;&#185;ng &#196;‘&#198;&#176;&#225;&#187;&#163;c |
+| 404 | Kh&#195;&#180;ng t&#195;&#172;m th&#225;&#186;&#165;y | Ki&#225;&#187;ƒm tra l&#225;&#186;&#161;i `user_id`, `content_id` ho&#225;&#186;&#183;c endpoint |
+| 409 | B&#225;&#187;‹ tr&#195;&#185;ng | &#196;&#225;&#187;•i username ho&#225;&#186;&#183;c email |
+| 422 | Sai &#196;‘&#225;&#187;‹nh d&#225;&#186;&#161;ng d&#225;&#187;&#175; li&#225;&#187;‡u | Ki&#225;&#187;ƒm tra l&#225;&#186;&#161;i JSON |
+
+## 13. Ghi Nh&#225;&#187;› Quan Tr&#225;&#187;ng
+
+- Kh&#195;&#180;ng c&#225;&#186;&#167;n ch&#225;&#186;&#161;y l&#225;&#187;‡nh bash tr&#195;&#170;n m&#195;&#161;y local &#196;‘&#225;&#187;ƒ sync game n&#225;&#187;&#175;a
+- Kh&#195;&#180;ng c&#225;&#186;&#167;n `.env` local &#196;‘&#225;&#187;ƒ v&#225;&#186;&#173;n h&#195;&#160;nh shop
+- Ch&#225;&#187;‰ c&#225;&#186;&#167;n upload game l&#195;&#170;n Wasabi r&#225;&#187;“i d&#195;&#185;ng `POST /admin/sync`
+- Icon game hi&#225;&#187;‡n &#196;‘&#198;&#176;&#225;&#187;&#163;c cache local tr&#195;&#170;n VPS
+- N&#225;&#186;&#191;u Tinfoil kh&#195;&#180;ng th&#225;&#186;&#165;y cover art, ki&#225;&#187;ƒm tra ch&#225;&#186;&#191; &#196;‘&#225;&#187;™ hi&#225;&#187;ƒn th&#225;&#187;‹ c&#195;&#179; &#196;‘ang &#225;&#187;Ÿ list/table view hay kh&#195;&#180;ng
+</pre>
+</body>
+</html>

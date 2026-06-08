@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 
-from shop_backend.api.routes import health, auth, users, admin, content
+from shop_backend.api.routes import admin, auth, content, health, shop, users
+from shop_backend.config import settings
 
 
 def create_app() -> FastAPI:
@@ -12,6 +13,9 @@ def create_app() -> FastAPI:
     app.include_router(admin.router, prefix="/admin")
     app.include_router(content.router, prefix="/content")
 
+    if settings.ENABLE_HTTP_SHOP:
+        app.include_router(shop.router, prefix="/shop")
+
     return app
 
 
@@ -20,4 +24,5 @@ app = create_app()
 
 def run() -> None:
     import uvicorn
+
     uvicorn.run("shop_backend.app:app", host="0.0.0.0", port=8000, reload=True)

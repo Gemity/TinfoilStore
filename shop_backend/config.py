@@ -1,4 +1,10 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+﻿from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+from datetime import timezone, timedelta
+
+# Vietnam timezone (UTC+7)
+VN_TZ = timezone(timedelta(hours=7))
 
 
 class Settings(BaseSettings):
@@ -9,6 +15,7 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str = "changeme-set-a-real-secret"
     JWT_ACCESS_TOKEN_TTL_MINUTES: int = 60
+    ENABLE_HTTP_SHOP: bool = False
 
     WASABI_ACCESS_KEY_ID: str = ""
     WASABI_SECRET_ACCESS_KEY: str = ""
@@ -19,3 +26,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
