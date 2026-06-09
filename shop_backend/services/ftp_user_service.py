@@ -1,8 +1,13 @@
-﻿import grp
-import pwd
 import re
 import shutil
 import subprocess
+
+try:
+    import grp
+    import pwd
+except ImportError:
+    grp = None
+    pwd = None
 
 
 FTP_GROUP = "tinfoilftp"
@@ -17,6 +22,7 @@ class FtpUserError(ValueError):
 
 
 def list_ftp_users() -> list[dict]:
+    _ensure_linux_user_modules()
     group = _get_group()
     members = set(group.gr_mem)
     users = []
@@ -46,6 +52,7 @@ def create_ftp_user(username: str, password: str, is_active: bool = True) -> dic
 
 
 def get_ftp_user(username: str) -> dict:
+    _ensure_linux_user_modules()
     username = _validate_username(username)
     try:
         return _response(pwd.getpwnam(username))
@@ -96,8 +103,14 @@ def _validate_password(password: str) -> None:
 
 
 def _ensure_root() -> None:
+    _ensure_linux_user_modules()
     if not shutil.which("useradd"):
         raise FtpUserError("Linux user management tools are not available")
+
+
+def _ensure_linux_user_modules() -> None:
+    if grp is None or pwd is None:
+        raise FtpUserError("Linux user management modules are not available")
 
 
 def _ensure_group() -> None:
@@ -121,6 +134,7 @@ def _user_exists(username: str) -> bool:
 
 
 def _ensure_group_member(username: str) -> None:
+    _ensure_linux_user_modules()
     try:
         entry = pwd.getpwnam(username)
     except KeyError as exc:
