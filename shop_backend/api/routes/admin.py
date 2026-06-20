@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from shop_backend.api.deps import get_db, require_admin
 from shop_backend.db.models import User, UserRole
+from shop_backend.schemas.admin_accounts import AdminCreate, AdminPasswordUpdate, AdminResponse
 from shop_backend.schemas.ftp import FtpUserCreate, FtpUserUpdate
 from shop_backend.schemas.subscriptions import (
     ExtendSubscriptionRequest,
@@ -13,7 +14,12 @@ from shop_backend.schemas.subscriptions import (
     RevokeSubscriptionRequest,
     SubscriptionResponse,
 )
-from shop_backend.services import ftp_index_service, ftp_user_service, subscription_service
+from shop_backend.services import (
+    admin_account_service,
+    ftp_index_service,
+    ftp_user_service,
+    subscription_service,
+)
 from shop_backend.services.subscription_service import get_effective_status
 from shop_backend.security.password import hash_password
 
@@ -26,7 +32,11 @@ def admin_list_content(max_items: int = 500, _: User = Depends(require_admin)):
 
 
 @router.post("/sync")
-def admin_sync_content(prefix: str = "", cleanup: bool = False, _: User = Depends(require_admin)):
+def admin_sync_content(
+    prefix: str = "",
+    cleanup: bool = False,
+    _: User = Depends(require_admin),
+):
     try:
         result = ftp_index_service.refresh_ftp_index()
     except ftp_index_service.FtpIndexError as exc:
@@ -34,9 +44,65 @@ def admin_sync_content(prefix: str = "", cleanup: bool = False, _: User = Depend
     result["legacy_parameters"] = {
         "prefix": prefix,
         "cleanup": cleanup,
-        "note": "Ignored for FTP shop. This endpoint refreshes the FTP index.",
+        "note": "Ignored for FTP-only shop. This endpoint refreshes the FTP root.",
     }
     return result
+
+
+def _admin_response(user: User) -> AdminResponse:
+    return AdminResponse(
+        username=user.username,
+        email=user.email,
+        role=user.role.value,
+        is_active=user.is_active,
+        created_at=user.created_at,
+    )
+
+
+@router.get("/admins", response_model=list[AdminResponse])
+def admin_list_admins(
+    username: str = Query(default="", description="Optional partial username search"),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """List admin accounts that can sign in to the /docs admin panel."""
+    return [_admin_response(u) for u in admin_account_service.list_admins(db, username)]
+
+
+@router.post("/admins", response_model=AdminResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_admin(body: AdminCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    """Create a new admin login account."""
+    try:
+        user = admin_account_service.create_admin(db, body.username, body.email, body.password)
+    except admin_account_service.AdminAccountError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _admin_response(user)
+
+
+@router.post("/admins/{username}/password", response_model=AdminResponse)
+def admin_set_admin_password(
+    username: str,
+    body: AdminPasswordUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Change the password of an admin account."""
+    try:
+        user = admin_account_service.set_admin_password(db, username, body.password)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    return _admin_response(user)
+
+
+@router.delete("/admins/{username}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_admin(username: str, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    """Delete an admin account. Refuses to delete the last active admin."""
+    try:
+        admin_account_service.delete_admin(db, username)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except admin_account_service.AdminAccountError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.get("/ftp-users")
@@ -173,6 +239,11 @@ def admin_delete_ftp_user(username: str, _: User = Depends(require_admin)):
 def _ensure_subscription_user(db: Session, username: str, password: str | None = None) -> User:
     user = db.query(User).filter(User.username == username).first()
     if user:
+        if password is not None:
+            user.password_hash = hash_password(password)
+            user.is_active = True
+            db.commit()
+            db.refresh(user)
         return user
 
     user = User(

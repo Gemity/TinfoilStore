@@ -1,0 +1,19 @@
+[Unit]
+Description=Mount Wasabi bucket for Tinfoil FTP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStartPre=/bin/mkdir -p /mnt/tinfoil-wasabi
+ExecStart=/usr/bin/rclone mount wasabi:tinfoil-store /mnt/tinfoil-wasabi \
+    --config /root/.config/rclone/rclone.conf \
+    --allow-other --read-only \
+    --dir-cache-time 30m --vfs-cache-mode off --poll-interval 0 \
+    --log-file /var/log/tinfoil-wasabi-rclone.log --log-level INFO
+ExecStop=/bin/fusermount -uz /mnt/tinfoil-wasabi
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

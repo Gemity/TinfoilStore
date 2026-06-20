@@ -1,0 +1,14 @@
+[Unit]
+Description=Tinfoil FTP unified root (flatten Wasabi mount into /srv/tinfoil-unified)
+Requires=tinfoil-wasabi-mount.service
+After=tinfoil-wasabi-mount.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/tinfoil-ftp-unified-root-start
+ExecStop=/usr/local/sbin/tinfoil-ftp-unified-root-stop
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

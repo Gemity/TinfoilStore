@@ -1,0 +1,10 @@
+# Install to /root/.config/rclone/rclone.conf on the server.
+# Fill in the CURRENT Wasabi access/secret key (never commit the real keys).
+[wasabi]
+type = s3
+provider = Wasabi
+env_auth = false
+access_key_id = __WASABI_ACCESS_KEY_ID__
+secret_access_key = __WASABI_SECRET_ACCESS_KEY__
+region = ap-southeast-1
+endpoint = s3.ap-southeast-1.wasabisys.com

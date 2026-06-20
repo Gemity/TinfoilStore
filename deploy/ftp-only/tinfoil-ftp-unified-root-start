@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Flatten the (nested) Wasabi rclone mount into a single FTP root.
+# Each game file is bind-mounted to /srv/tinfoil-unified/<flattened-name>,
+# and the Việt-hoá folder is bind-mounted as /srv/tinfoil-unified/viet-hoa.
+set -euo pipefail
+
+SOURCE_DIR="/mnt/tinfoil-wasabi"
+UNIFIED_ROOT="/srv/tinfoil-unified"
+VIET_HOA_SOURCE="${SOURCE_DIR}/TGNN Store [VIệt Hoá]"
+
+mkdir -p "$UNIFIED_ROOT"
+
+# Always clean stale bind mounts first (robust: handles spaces/special chars).
+/usr/local/sbin/tinfoil-ftp-unified-root-stop || true
+
+# Remove leftover placeholder files/links/empty dirs.
+find "$UNIFIED_ROOT" -mindepth 1 -maxdepth 1 -type f -delete || true
+find "$UNIFIED_ROOT" -mindepth 1 -maxdepth 1 -type l -delete || true
+find "$UNIFIED_ROOT" -mindepth 1 -maxdepth 1 -type d -empty -delete || true
+
+# Bind-mount every installable game file, flattened to the root.
+find "$SOURCE_DIR" -type f \( -iname '*.nsp' -o -iname '*.nsz' -o -iname '*.xci' -o -iname '*.xcz' \) -print0 |
+while IFS= read -r -d '' source; do
+  name="$(basename "$source")"
+  # Tinfoil/FTP dislike ':' in names -> replace " : " style with " - ".
+  safe="$(printf '%s' "$name" | sed 's/[[:space:]]*:[[:space:]]*/ - /g')"
+  target="$UNIFIED_ROOT/$safe"
+  # De-duplicate identical flattened names with a short hash suffix.
+  if [ -e "$target" ]; then
+    stem="${safe%.*}"; ext="${safe##*.}"
+    safe="${stem} - $(printf '%s' "$source" | sha1sum | cut -c1-8).${ext}"
+    target="$UNIFIED_ROOT/$safe"
+  fi
+  : > "$target"
+  chmod 0644 "$target"
+  mount --bind "$source" "$target"
+done
+
+# Expose the Việt-hoá folder for File Browser.
+if [ -d "$VIET_HOA_SOURCE" ]; then
+  mkdir -p "$UNIFIED_ROOT/viet-hoa"
+  mount --bind "$VIET_HOA_SOURCE" "$UNIFIED_ROOT/viet-hoa"
+fi

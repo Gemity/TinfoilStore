@@ -154,7 +154,12 @@ def cache_titledb_assets_for_content(db: Session) -> dict[str, int]:
     return stats
 
 
-def build_shop_index(db: Session, user_id: uuid.UUID, base_url: str | None = None) -> dict:
+def build_shop_index(
+    db: Session,
+    user_id: uuid.UUID,
+    base_url: str | None = None,
+    access_query: str = "",
+) -> dict:
     """Return a Tinfoil-format dict for the authenticated user."""
     sub = get_active_subscription(db, user_id)
     if not sub:
@@ -178,7 +183,7 @@ def build_shop_index(db: Session, user_id: uuid.UUID, base_url: str | None = Non
     for item in items:
         if base_url:
             quoted_title = quote(item.title, safe="")
-            url = f"{base_url}/shop/download/{item.id}/{quoted_title}"
+            url = f"{base_url}/shop/download/{item.id}/{quoted_title}{access_query}"
         else:
             url = _resolve_url(item)
         url = f"{url}#{item.title}"
@@ -218,19 +223,22 @@ def build_shop_index(db: Session, user_id: uuid.UUID, base_url: str | None = Non
         if description:
             titledb[title_id]["description"] = description
 
-    referrer = f"{base_url}/shop/" if base_url else None
     payload = {
         "files": files,
         "directories": [],
         "titledb": titledb,
         "success": "Welcome to TinfoilStore!",
     }
-    if referrer:
-        payload["referrer"] = referrer
     return payload
 
 
-def build_wasabi_tree_index(db: Session, user_id: uuid.UUID, base_url: str, prefix: str = "") -> dict:
+def build_wasabi_tree_index(
+    db: Session,
+    user_id: uuid.UUID,
+    base_url: str,
+    prefix: str = "",
+    access_query: str = "",
+) -> dict:
     """Return direct Wasabi objects as a Tinfoil browse tree."""
     require_active_subscription(db, user_id)
 
@@ -247,7 +255,7 @@ def build_wasabi_tree_index(db: Session, user_id: uuid.UUID, base_url: str, pref
             child_prefix = item.get("Prefix", "")
             name = _display_name_for_prefix(child_prefix)
             public_prefix = _public_prefix_for_storage_prefix(child_prefix)
-            url = f"{base_url}/shop/folder/{quote(public_prefix, safe='/')}/"
+            url = f"{base_url}/shop/folder/{quote(public_prefix, safe='/')}/{access_query}"
             directories.append(url)
 
         for obj in page.get("Contents", []):
@@ -255,7 +263,7 @@ def build_wasabi_tree_index(db: Session, user_id: uuid.UUID, base_url: str, pref
             if key == normalized_prefix or key.endswith("/"):
                 continue
             name = key.rsplit("/", 1)[-1]
-            url = f"{base_url}/shop/file/{quote(key, safe='/')}#{name}"
+            url = f"{base_url}/shop/file/{quote(key, safe='/')}{access_query}#{name}"
             entry = {"url": url}
             if obj.get("Size") is not None:
                 entry["size"] = obj["Size"]
@@ -265,12 +273,10 @@ def build_wasabi_tree_index(db: Session, user_id: uuid.UUID, base_url: str, pref
         "files": sorted(files, key=lambda item: item["url"].lower()),
         "directories": sorted(directories, key=str.lower),
         "titledb": {},
-        "success": f"Browsing {normalized_prefix or 'Wasabi root'}",
-        "referrer": f"{base_url}/shop/",
     }
 
 
-def build_mixed_root_index(db: Session, user_id: uuid.UUID, base_url: str) -> dict:
+def build_mixed_root_index(db: Session, user_id: uuid.UUID, base_url: str, access_query: str = "") -> dict:
     """Return installable game files flat plus one Vietnamese patch folder."""
     require_active_subscription(db, user_id)
 
@@ -291,7 +297,7 @@ def build_mixed_root_index(db: Session, user_id: uuid.UUID, base_url: str) -> di
                 continue
 
             name = key.rsplit("/", 1)[-1]
-            url = f"{base_url}/shop/file/{quote(key, safe='/')}#{name}"
+            url = f"{base_url}/shop/file/{quote(key, safe='/')}{access_query}#{name}"
             entry = {"url": url}
             if obj.get("Size") is not None:
                 entry["size"] = obj["Size"]
@@ -307,14 +313,13 @@ def build_mixed_root_index(db: Session, user_id: uuid.UUID, base_url: str) -> di
 
     return {
         "files": sorted(files, key=_shop_entry_display_name),
-        "directories": [f"{base_url}/shop/folder/{quote('Việt Hóa', safe='')}/"],
+        "directories": [f"{base_url}/shop/folder/viet-hoa/{access_query}"],
         "titledb": titledb,
         "success": "Welcome to TinfoilStore!",
-        "referrer": f"{base_url}/shop/",
     }
 
 
-def build_mixed_root_html(db: Session, user_id: uuid.UUID, base_url: str) -> str:
+def build_mixed_root_html(db: Session, user_id: uuid.UUID, base_url: str, access_query: str = "") -> str:
     """Return an HTML directory listing for Tinfoil's HTTP parser."""
     require_active_subscription(db, user_id)
 
@@ -323,8 +328,8 @@ def build_mixed_root_html(db: Session, user_id: uuid.UUID, base_url: str) -> str
     paginator = client.get_paginator("list_objects_v2")
     links = [
         _html_link(
-            f"{base_url}/shop/html-folder/{quote('Việt Hóa', safe='')}/",
-            "Việt Hóa/",
+            f"{base_url}/shop/html-folder/viet-hoa/{access_query}",
+            "viet-hoa/",
         )
     ]
 
@@ -336,12 +341,18 @@ def build_mixed_root_html(db: Session, user_id: uuid.UUID, base_url: str) -> str
             if not key.lower().endswith(GAME_EXTENSIONS):
                 continue
             name = key.rsplit("/", 1)[-1]
-            links.append(_html_link(f"{base_url}/shop/file/{quote(key, safe='/')}", name))
+            links.append(_html_link(f"{base_url}/shop/file/{quote(key, safe='/')}{access_query}", name))
 
     return _html_listing("TinfoilStore", sorted(links, key=str.lower))
 
 
-def build_wasabi_tree_html(db: Session, user_id: uuid.UUID, base_url: str, public_prefix: str) -> str:
+def build_wasabi_tree_html(
+    db: Session,
+    user_id: uuid.UUID,
+    base_url: str,
+    public_prefix: str,
+    access_query: str = "",
+) -> str:
     """Return an HTML listing for one public folder path."""
     require_active_subscription(db, user_id)
 
@@ -357,14 +368,14 @@ def build_wasabi_tree_html(db: Session, user_id: uuid.UUID, base_url: str, publi
             child_prefix = item.get("Prefix", "")
             child_public_prefix = _public_prefix_for_storage_prefix(child_prefix)
             name = _display_name_for_prefix(child_public_prefix)
-            links.append(_html_link(f"{base_url}/shop/html-folder/{quote(child_public_prefix, safe='/')}/", f"{name}/"))
+            links.append(_html_link(f"{base_url}/shop/html-folder/{quote(child_public_prefix, safe='/')}/{access_query}", f"{name}/"))
 
         for obj in page.get("Contents", []):
             key = obj["Key"]
             if key == storage_prefix or key.endswith("/"):
                 continue
             name = key.rsplit("/", 1)[-1]
-            links.append(_html_link(f"{base_url}/shop/file/{quote(key, safe='/')}", name))
+            links.append(_html_link(f"{base_url}/shop/file/{quote(key, safe='/')}{access_query}", name))
 
     title = public_prefix.rstrip("/") or "TinfoilStore"
     return _html_listing(title, sorted(links, key=str.lower))
@@ -504,6 +515,10 @@ def _html_listing(title: str, links: list[str]) -> str:
 
 def _storage_prefix_for_public_prefix(prefix: str) -> str:
     prefix = _normalize_s3_prefix(prefix)
+    if prefix == "viet-hoa/":
+        return VIET_HOA_PREFIX
+    if prefix.startswith("viet-hoa/"):
+        return f"{VIET_HOA_PREFIX}{prefix[len('viet-hoa/'):]}"
     if prefix == "Việt Hóa/":
         return VIET_HOA_PREFIX
     if prefix.startswith("Việt Hóa/"):
@@ -514,9 +529,9 @@ def _storage_prefix_for_public_prefix(prefix: str) -> str:
 def _public_prefix_for_storage_prefix(prefix: str) -> str:
     prefix = _normalize_s3_prefix(prefix)
     if prefix == VIET_HOA_PREFIX:
-        return "Việt Hóa"
+        return "viet-hoa"
     if prefix.startswith(VIET_HOA_PREFIX):
-        return f"Việt Hóa/{prefix[len(VIET_HOA_PREFIX):].rstrip('/')}"
+        return f"viet-hoa/{prefix[len(VIET_HOA_PREFIX):].rstrip('/')}"
     return prefix.rstrip("/")
 
 

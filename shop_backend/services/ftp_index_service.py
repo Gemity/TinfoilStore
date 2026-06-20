@@ -18,22 +18,31 @@ def list_ftp_content(max_items: int = 500) -> dict:
     root_exists = FTP_ROOT.exists()
     files = []
     directories = []
+    errors = []
 
     if root_exists:
         for entry in sorted(FTP_ROOT.iterdir(), key=lambda item: item.name.lower()):
+            try:
+                is_directory = entry.is_dir()
+                is_file = entry.is_file()
+            except OSError as exc:
+                errors.append({"name": entry.name, "error": str(exc)})
+                continue
+
             item = {
                 "name": entry.name,
                 "path": f"/{entry.name}",
-                "type": "directory" if entry.is_dir() else "file",
+                "type": "directory" if is_directory else "file",
             }
-            if entry.is_file():
+            if is_file:
                 try:
                     item["size_bytes"] = entry.stat().st_size
-                except OSError:
+                except OSError as exc:
                     item["size_bytes"] = None
+                    item["error"] = str(exc)
                 item["is_game_file"] = entry.suffix.lower() in GAME_EXTENSIONS
                 files.append(item)
-            elif entry.is_dir():
+            elif is_directory:
                 directories.append(item)
 
             if len(files) + len(directories) >= max_items:
@@ -47,6 +56,7 @@ def list_ftp_content(max_items: int = 500) -> dict:
         "total_returned": len(files) + len(directories),
         "game_files_returned": sum(1 for item in files if item.get("is_game_file")),
         "viet_hoa_present": (FTP_ROOT / "viet-hoa").exists(),
+        "errors": errors,
     }
 
 

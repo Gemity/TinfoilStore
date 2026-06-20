@@ -14,16 +14,20 @@ Response format expected by Tinfoil:
 }
 """
 
+import hashlib
+import hmac
 import logging
+import time
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request as FastAPIRequest, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request as FastAPIRequest, Response, status
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.orm import Session
 
 from shop_backend.api.deps import get_db
+from shop_backend.config import settings
 from shop_backend.db.models import ContentObject, User
 from shop_backend.security.password import verify_password
 from shop_backend.services import shop_service
@@ -32,6 +36,7 @@ router = APIRouter(tags=["shop"])
 logger = logging.getLogger("uvicorn.error")
 
 basic_scheme = HTTPBasic()
+SHOP_ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60
 
 
 @router.api_route(
@@ -63,6 +68,48 @@ def _basic_auth_user(
     return user
 
 
+def _access_query(user: User) -> str:
+    return f"?access_token={_make_access_token(user)}"
+
+
+def _make_access_token(user: User) -> str:
+    expires_at = int(time.time()) + SHOP_ACCESS_TOKEN_TTL_SECONDS
+    payload = f"{user.id}:{expires_at}"
+    signature = hmac.new(
+        settings.JWT_SECRET_KEY.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{payload}:{signature}"
+
+
+def _token_auth_user(access_token: str, db: Session) -> User:
+    try:
+        user_id, expires_at_text, signature = access_token.rsplit(":", 2)
+        expires_at = int(expires_at_text)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token") from exc
+
+    payload = f"{user_id}:{expires_at}"
+    expected = hmac.new(
+        settings.JWT_SECRET_KEY.encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected) or expires_at < int(time.time()):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token")
+
+    try:
+        parsed_user_id = uuid.UUID(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token") from exc
+
+    user = db.query(User).filter(User.id == parsed_user_id, User.is_active.is_(True)).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token")
+    return user
+
+
 @router.get("")
 @router.get("/")
 def shop_index(
@@ -73,7 +120,14 @@ def shop_index(
     """Return a Tinfoil-compatible shop index."""
     base_url = str(request.base_url).rstrip("/")
     try:
-        return HTMLResponse(shop_service.build_mixed_root_html(db, user.id, base_url=base_url))
+        payload = shop_service.build_shop_index(
+            db,
+            user.id,
+            base_url=base_url,
+            access_query=_access_query(user),
+        )
+        _rewrite_titledb_assets(payload, request)
+        return payload
     except PermissionError:
         return shop_service.build_expired_response(db, user.id)
 
@@ -88,7 +142,13 @@ def shop_browse(
     """Return one Wasabi prefix as a Tinfoil-compatible folder."""
     base_url = str(request.base_url).rstrip("/")
     try:
-        return shop_service.build_wasabi_tree_index(db, user.id, base_url=base_url, prefix=prefix)
+        return shop_service.build_wasabi_tree_index(
+            db,
+            user.id,
+            base_url=base_url,
+            prefix=prefix,
+            access_query=_access_query(user),
+        )
     except PermissionError:
         return shop_service.build_expired_response(db, user.id)
 
@@ -97,14 +157,21 @@ def shop_browse(
 def shop_folder(
     request: FastAPIRequest,
     prefix: str,
-    user: User = Depends(_basic_auth_user),
+    access_token: str = Query(default=""),
     db: Session = Depends(get_db),
 ):
     """Return one Wasabi prefix using path-style folder URLs for Tinfoil."""
+    user = _token_auth_user(access_token, db)
     base_url = str(request.base_url).rstrip("/")
     storage_prefix = shop_service._storage_prefix_for_public_prefix(prefix)
     try:
-        return shop_service.build_wasabi_tree_index(db, user.id, base_url=base_url, prefix=storage_prefix)
+        return shop_service.build_wasabi_tree_index(
+            db,
+            user.id,
+            base_url=base_url,
+            prefix=storage_prefix,
+            access_query=f"?access_token={access_token}",
+        )
     except PermissionError:
         return shop_service.build_expired_response(db, user.id)
 
@@ -113,13 +180,22 @@ def shop_folder(
 def shop_html_folder(
     request: FastAPIRequest,
     prefix: str,
-    user: User = Depends(_basic_auth_user),
+    access_token: str = Query(default=""),
     db: Session = Depends(get_db),
 ):
     """Return one Wasabi prefix as an HTML directory listing."""
+    user = _token_auth_user(access_token, db)
     base_url = str(request.base_url).rstrip("/")
     try:
-        return HTMLResponse(shop_service.build_wasabi_tree_html(db, user.id, base_url=base_url, public_prefix=prefix))
+        return HTMLResponse(
+            shop_service.build_wasabi_tree_html(
+                db,
+                user.id,
+                base_url=base_url,
+                public_prefix=prefix,
+                access_query=f"?access_token={access_token}",
+            )
+        )
     except PermissionError:
         return shop_service.build_expired_response(db, user.id)
 
@@ -140,10 +216,11 @@ def shop_banner_asset(title_id: str) -> Response:
 def shop_download(
     content_id: str,
     filename: str,
-    user: User = Depends(_basic_auth_user),
+    access_token: str = Query(default=""),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     """Redirect authenticated clients to a fresh Wasabi URL with a stable filename path."""
+    user = _token_auth_user(access_token, db)
     try:
         shop_service.build_shop_index(db, user.id)
     except PermissionError:
@@ -163,10 +240,11 @@ def shop_download(
 @router.get("/file/{storage_key:path}")
 def shop_file(
     storage_key: str,
-    user: User = Depends(_basic_auth_user),
+    access_token: str = Query(default=""),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     """Redirect authenticated clients to a fresh Wasabi URL for any object key."""
+    user = _token_auth_user(access_token, db)
     try:
         shop_service.require_active_subscription(db, user.id)
     except PermissionError:
