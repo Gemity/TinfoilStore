@@ -80,8 +80,13 @@ def refresh_ftp_index() -> dict:
     }
 
 
+# Each restart gets this long before we give up; keeps total request time under
+# nginx's proxy_read_timeout (300s) instead of hanging until nginx returns 504.
+SERVICE_RESTART_TIMEOUT_SECONDS = 120
+
+
 def _restart_service(name: str) -> None:
-    _run(["systemctl", "restart", name])
+    _run(["systemctl", "restart", name], timeout=SERVICE_RESTART_TIMEOUT_SECONDS)
 
 
 def _service_state(name: str) -> str:
@@ -89,11 +94,13 @@ def _service_state(name: str) -> str:
     return (result.stdout or result.stderr or "unknown").strip()
 
 
-def _run(args: list[str]) -> None:
+def _run(args: list[str], timeout: float | None = None) -> None:
     try:
-        subprocess.run(args, text=True, capture_output=True, check=True)
+        subprocess.run(args, text=True, capture_output=True, check=True, timeout=timeout)
     except FileNotFoundError as exc:
         raise FtpIndexError(f"Command not available: {args[0]}") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise FtpIndexError(f"Command timed out after {timeout}s: {' '.join(args)}") from exc
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or str(exc)).strip()
         raise FtpIndexError(detail) from exc
