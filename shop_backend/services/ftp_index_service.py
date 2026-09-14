@@ -60,10 +60,21 @@ def list_ftp_content(max_items: int = 500) -> dict:
     }
 
 
-def refresh_ftp_index() -> dict:
-    _restart_service(WASABI_MOUNT_SERVICE)
+def refresh_ftp_index(rebuild_wasabi_mount: bool = False) -> dict:
+    """Refresh the FTP root.
+
+    Restarting `tinfoil-wasabi-mount` drops rclone's 30m dir-cache and briefly
+    interrupts every bind-mounted file under it while the mount comes back
+    up, so it's disruptive to do on every sync. New files added to Wasabi are
+    already picked up by `tinfoil-ftp-unified-root` alone, without touching
+    the cache. Only pass rebuild_wasabi_mount=True after a rename/move on
+    Wasabi, where the stale dir-cache would otherwise hide the new path for
+    up to 30 minutes.
+    """
+    if rebuild_wasabi_mount:
+        _restart_service(WASABI_MOUNT_SERVICE)
     _restart_service(FTP_INDEX_SERVICE)
-    content = list_ftp_content(max_items=50)
+    content = list_ftp_content(max_items=5000)
     return {
         "message": "FTP index refreshed.",
         "services": {
@@ -73,8 +84,8 @@ def refresh_ftp_index() -> dict:
         "content": {
             "root": content["root"],
             "root_exists": content["root_exists"],
-            "sample_count": content["total_returned"],
-            "sample_game_files": content["game_files_returned"],
+            "total_count": content["total_returned"],
+            "total_game_files": content["game_files_returned"],
             "viet_hoa_present": content["viet_hoa_present"],
         },
     }

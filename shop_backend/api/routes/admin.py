@@ -35,10 +35,19 @@ def admin_list_content(max_items: int = 500, _: User = Depends(require_admin)):
 def admin_sync_content(
     prefix: str = "",
     cleanup: bool = False,
+    rebuild_wasabi_mount: bool = Query(
+        default=False,
+        description=(
+            "Also restart tinfoil-wasabi-mount to bust rclone's dir cache. "
+            "Only needed after renaming/moving a file on Wasabi. Leave false "
+            "for routine syncs (adding new files) - restarting the mount "
+            "briefly interrupts every bind-mounted file while it remounts."
+        ),
+    ),
     _: User = Depends(require_admin),
 ):
     try:
-        result = ftp_index_service.refresh_ftp_index()
+        result = ftp_index_service.refresh_ftp_index(rebuild_wasabi_mount=rebuild_wasabi_mount)
     except ftp_index_service.FtpIndexError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
     result["legacy_parameters"] = {
